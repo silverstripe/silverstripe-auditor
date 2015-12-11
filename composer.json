@@ -1,0 +1,13 @@
+{
+	"name": "silverstripe/auditor",
+	"description": "Adds security audit trail to SilverStripe.",
+	"type": "silverstripe-module",
+	"keywords": ["silverstripe", "audit"],
+	"license": "BSD-3-Clause",
+	"require": {
+		"silverstripe/framework": "~3.1"
+	},
+	"require-dev": {
+		"phpunit/PHPUnit": "~3.7@stable"
+	}
+}

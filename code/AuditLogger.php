@@ -12,7 +12,7 @@ class AuditLogger extends SiteTreeExtension {
 		global $databaseConfig;
 
 		$current = DB::getConn();
-		if (!$current || @$current->isManipulationLoggingCapture) return; // If not yet set, or its already captured, just return
+		if (!$current || !$current->currentDatabase() || @$current->isManipulationLoggingCapture) return; // If not yet set, or its already captured, just return
 
 		$type = get_class($current);;
 		$file = TEMP_FOLDER . "/.cache.CLC.$type";

@@ -1,5 +1,8 @@
 # SilverStripe Auditor
 
+[![Build Status](http://img.shields.io/travis/silverstripe-labs/silverstripe-auditor.svg?style=flat-square)](https://travis-ci.org/silverstripe-labs/silverstripe-auditor)
+[![Code Quality](http://img.shields.io/scrutinizer/g/silverstripe-labs/silverstripe-auditor.svg?style=flat-square)](https://scrutinizer-ci.com/g/silverstripe-labs/silverstripe-auditor)
+
 Auditor module installs a series of extension hooks into the Framework to monitor activity of authenticated users. Audit
 trail is written into `LOG_AUTH` facility, and includes:
 

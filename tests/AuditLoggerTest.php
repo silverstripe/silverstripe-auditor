@@ -2,8 +2,11 @@
 
 require_once 'Zend/Log/Writer/Abstract.php';
 
-class AuditLoggerTest extends SapphireTest
+class AuditLoggerTest extends FunctionalTest
 {
+
+    protected $usesDatabase = true;
+
     protected $writer = null;
 
     public function setUp()
@@ -54,6 +57,8 @@ class AuditLoggerTest extends SapphireTest
 
     public function testLoggingWriteDoesNotOccurWhenNotLoggedIn()
     {
+        $this->session()->inst_set('loggedInAs', null);
+
         $group = new Group(array('Title' => 'My group'));
         $group->write();
 

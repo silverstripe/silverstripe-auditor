@@ -1,282 +1,303 @@
 <?php
+
 require_once 'Zend/Log/Writer/Abstract.php';
 
-class AuditLoggerTest extends SapphireTest {
+class AuditLoggerTest extends SapphireTest
+{
+    protected $writer = null;
 
-	protected $writer = null;
+    public function setUp()
+    {
+        parent::setUp();
 
-	public function setUp() {
-		parent::setUp();
+        $this->writer = new AuditLoggerTest_LogWriter('SilverStripe', null, LOG_AUTH);
+        SS_Log::add_writer($this->writer, AuditLogger::PRIORITY, '=');
 
-		$this->writer = new AuditLoggerTest_LogWriter('SilverStripe', null, LOG_AUTH);
-		SS_Log::add_writer($this->writer, AuditLogger::PRIORITY, '=');
+        // ensure the manipulations are being captured, normally called in {@link AuditLogger::onBeforeInit()}
+        // but tests will reset this during setting up, so we need to set it back again.
+        AuditLogger::bind_manipulation_capture();
+    }
 
-		// ensure the manipulations are being captured, normally called in {@link AuditLogger::onBeforeInit()}
-		// but tests will reset this during setting up, so we need to set it back again.
-		AuditLogger::bind_manipulation_capture();
-	}
+    public function testLoggingIn()
+    {
+        $this->logInWithPermission('ADMIN');
 
-	public function testLoggingIn() {
-		$this->logInWithPermission('ADMIN');
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('ADMIN@example.org', $message);
+        $this->assertContains('successfully logged in', $message);
+    }
 
-		$message = $this->writer->getLastMessage();
-		$this->assertContains('ADMIN@example.org', $message);
-		$this->assertContains('successfully logged in', $message);
-	}
+    public function testAutoLoggingIn()
+    {
+        // Simulate an autologin by calling the extension hook directly.
+        // Member->autoLogin() relies on session and cookie state which we can't simulate here.
+        $this->logInWithPermission('ADMIN');
+        $member = Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
+        $member->extend('memberAutoLoggedIn');
 
-	public function testAutoLoggingIn() {
-		// Simulate an autologin by calling the extension hook directly.
-		// Member->autoLogin() relies on session and cookie state which we can't simulate here.
-		$this->logInWithPermission('ADMIN');
-		$member = Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
-		$member->extend('memberAutoLoggedIn');
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('ADMIN@example.org', $message);
+        $this->assertContains('successfully restored autologin', $message);
+    }
 
-		$message = $this->writer->getLastMessage();
-		$this->assertContains('ADMIN@example.org', $message);
-		$this->assertContains('successfully restored autologin', $message);
-	}
+    public function testLoggingOut()
+    {
+        $this->logInWithPermission('ADMIN');
 
-	public function testLoggingOut() {
-		$this->logInWithPermission('ADMIN');
+        $member = Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
+        $member->logOut();
 
-		$member = Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
-		$member->logOut();
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('ADMIN@example.org', $message);
+        $this->assertContains('successfully logged out', $message);
+    }
 
-		$message = $this->writer->getLastMessage();
-		$this->assertContains('ADMIN@example.org', $message);
-		$this->assertContains('successfully logged out', $message);
-	}
+    public function testLoggingWriteDoesNotOccurWhenNotLoggedIn()
+    {
+        $group = new Group(array('Title' => 'My group'));
+        $group->write();
 
-	public function testLoggingWriteDoesNotOccurWhenNotLoggedIn() {
-		$group = new Group(array('Title' => 'My group'));
-		$group->write();
+        $message = $this->writer->getLastMessage();
+        $this->assertEmpty($message, 'No one is logged in, so nothing was logged');
+    }
 
-		$message = $this->writer->getLastMessage();
-		$this->assertEmpty($message, 'No one is logged in, so nothing was logged');
-	}
+    public function testLoggingWriteWhenLoggedIn()
+    {
+        $this->logInWithPermission('ADMIN');
 
-	public function testLoggingWriteWhenLoggedIn() {
-		$this->logInWithPermission('ADMIN');
+        $group = new Group(array('Title' => 'My group'));
+        $group->write();
 
-		$group = new Group(array('Title' => 'My group'));
-		$group->write();
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('ADMIN@example.org', $message);
+        $this->assertContains('modified', $message);
+        $this->assertContains('Group', $message);
+    }
 
-		$message = $this->writer->getLastMessage();
-		$this->assertContains('ADMIN@example.org', $message);
-		$this->assertContains('modified', $message);
-		$this->assertContains('Group', $message);
-	}
+    public function testAddMemberToGroupUsingGroupMembersRelation()
+    {
+        $this->logInWithPermission('ADMIN');
 
-	public function testAddMemberToGroupUsingGroupMembersRelation() {
-		$this->logInWithPermission('ADMIN');
+        $group = new Group(array('Title' => 'My group'));
+        $group->write();
 
-		$group = new Group(array('Title' => 'My group'));
-		$group->write();
+        $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe1'));
+        $member->write();
 
-		$member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe1'));
-		$member->write();
+        $group->Members()->add($member);
 
-		$group->Members()->add($member);
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('ADMIN@example.org', $message);
+        $this->assertContains('added Member "joe1"', $message);
+        $this->assertContains('to Group "My group"', $message);
+    }
 
-		$message = $this->writer->getLastMessage();
-		$this->assertContains('ADMIN@example.org', $message);
-		$this->assertContains('added Member "joe1"', $message);
-		$this->assertContains('to Group "My group"', $message);
-	}
+    public function testAddMemberToGroupUsingMemberGroupsRelation()
+    {
+        $this->logInWithPermission('ADMIN');
 
-	public function testAddMemberToGroupUsingMemberGroupsRelation() {
-		$this->logInWithPermission('ADMIN');
+        $group = new Group(array('Title' => 'My group'));
+        $group->write();
 
-		$group = new Group(array('Title' => 'My group'));
-		$group->write();
+        $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe2'));
+        $member->write();
 
-		$member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe2'));
-		$member->write();
+        $member->Groups()->add($group);
 
-		$member->Groups()->add($group);
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('ADMIN@example.org', $message);
+        $this->assertContains('added Member "joe2"', $message);
+        $this->assertContains('to Group "My group"', $message);
+    }
 
-		$message = $this->writer->getLastMessage();
-		$this->assertContains('ADMIN@example.org', $message);
-		$this->assertContains('added Member "joe2"', $message);
-		$this->assertContains('to Group "My group"', $message);
-	}
+    public function testRemoveMemberFromGroupUsingGroupMembersRelation()
+    {
+        $this->logInWithPermission('ADMIN');
 
-	public function testRemoveMemberFromGroupUsingGroupMembersRelation() {
-		$this->logInWithPermission('ADMIN');
+        $group = new Group(array('Title' => 'My group'));
+        $group->write();
 
-		$group = new Group(array('Title' => 'My group'));
-		$group->write();
+        $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe3'));
+        $member->write();
 
-		$member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe3'));
-		$member->write();
+        $group->Members()->add($member);
+        $group->Members()->remove($member);
 
-		$group->Members()->add($member);
-		$group->Members()->remove($member);
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('ADMIN@example.org', $message);
+        $this->assertContains('removed Member "joe3"', $message);
+        $this->assertContains('from Group "My group"', $message);
+    }
 
-		$message = $this->writer->getLastMessage();
-		$this->assertContains('ADMIN@example.org', $message);
-		$this->assertContains('removed Member "joe3"', $message);
-		$this->assertContains('from Group "My group"', $message);
-	}
+    public function testRemoveMemberFromGroupUsingMemberGroupsRelation()
+    {
+        $this->logInWithPermission('ADMIN');
 
-	public function testRemoveMemberFromGroupUsingMemberGroupsRelation() {
-		$this->logInWithPermission('ADMIN');
+        $group = new Group(array('Title' => 'My group'));
+        $group->write();
 
-		$group = new Group(array('Title' => 'My group'));
-		$group->write();
+        $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe4'));
+        $member->write();
 
-		$member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe4'));
-		$member->write();
+        $member->Groups()->add($group);
+        $member->Groups()->remove($group);
 
-		$member->Groups()->add($group);
-		$member->Groups()->remove($group);
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('ADMIN@example.org', $message);
+        $this->assertContains('removed Member "joe4"', $message);
+        $this->assertContains('from Group "My group"', $message);
+    }
 
-		$message = $this->writer->getLastMessage();
-		$this->assertContains('ADMIN@example.org', $message);
-		$this->assertContains('removed Member "joe4"', $message);
-		$this->assertContains('from Group "My group"', $message);
-	}
+    public function testPublishPage()
+    {
+        $this->logInWithPermission('ADMIN');
 
-	public function testPublishPage() {
-		$this->logInWithPermission('ADMIN');
+        $page = new Page();
+        $page->Title = 'My page';
+        $page->Content = 'This is my page content';
+        $page->doPublish();
 
-		$page = new Page();
-		$page->Title = 'My page';
-		$page->Content = 'This is my page content';
-		$page->doPublish();
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('ADMIN@example.org', $message);
+        $this->assertContains('published Page', $message);
+        $this->assertContains('My page', $message);
+    }
 
-		$message = $this->writer->getLastMessage();
-		$this->assertContains('ADMIN@example.org', $message);
-		$this->assertContains('published Page', $message);
-		$this->assertContains('My page', $message);
-	}
+    /**
+     * Test log message sanitisation.
+     */
+    public function testSanitisation()
+    {
+        $this->logInWithPermission('ADMIN');
 
-	/**
-	 * Test log message sanitisation
-	 */
-	public function testSanitisation() {
-		$this->logInWithPermission('ADMIN');
+        $page = new Page();
+        $page->Title = "My\npage\r\nYour Page";
+        $page->Content = 'This is my page content';
+        $page->doPublish();
 
-		$page = new Page();
-		$page->Title = "My\npage\r\nYour Page";
-		$page->Content = 'This is my page content';
-		$page->doPublish();
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('ADMIN@example.org', $message);
+        $this->assertContains('published Page', $message);
+        $this->assertContains('My page Your Page', $message);
+    }
 
-		$message = $this->writer->getLastMessage();
-		$this->assertContains('ADMIN@example.org', $message);
-		$this->assertContains('published Page', $message);
-		$this->assertContains('My page Your Page', $message);
-	}
+    public function testUnpublishPage()
+    {
+        $this->logInWithPermission('ADMIN');
 
-	public function testUnpublishPage() {
-		$this->logInWithPermission('ADMIN');
+        $page = new Page();
+        $page->Title = 'My page';
+        $page->Content = 'This is my page content';
+        $page->doPublish();
+        $page->doUnpublish();
 
-		$page = new Page();
-		$page->Title = 'My page';
-		$page->Content = 'This is my page content';
-		$page->doPublish();
-		$page->doUnpublish();
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('ADMIN@example.org', $message);
+        $this->assertContains('unpublished Page', $message);
+        $this->assertContains('My page', $message);
+    }
 
-		$message = $this->writer->getLastMessage();
-		$this->assertContains('ADMIN@example.org', $message);
-		$this->assertContains('unpublished Page', $message);
-		$this->assertContains('My page', $message);
-	}
+    public function testDuplicatePage()
+    {
+        $this->logInWithPermission('ADMIN');
 
-	public function testDuplicatePage() {
-		$this->logInWithPermission('ADMIN');
+        $page = new Page();
+        $page->Title = 'My page';
+        $page->Content = 'This is my page content';
+        $page->write();
+        $page->duplicate();
 
-		$page = new Page();
-		$page->Title = 'My page';
-		$page->Content = 'This is my page content';
-		$page->write();
-		$page->duplicate();
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('ADMIN@example.org', $message);
+        $this->assertContains('duplicated Page', $message);
+        $this->assertContains('My page', $message);
+    }
 
-		$message = $this->writer->getLastMessage();
-		$this->assertContains('ADMIN@example.org', $message);
-		$this->assertContains('duplicated Page', $message);
-		$this->assertContains('My page', $message);
-	}
+    public function testRevertToLive()
+    {
+        $this->logInWithPermission('ADMIN');
 
-	public function testRevertToLive() {
-		$this->logInWithPermission('ADMIN');
+        $page = new Page();
+        $page->Title = 'My page';
+        $page->Content = 'This is my page content';
+        $page->doPublish();
 
-		$page = new Page();
-		$page->Title = 'My page';
-		$page->Content = 'This is my page content';
-		$page->doPublish();
+        $page->Content = 'Changed';
+        $page->write();
+        $page->doRevertToLive();
 
-		$page->Content = 'Changed';
-		$page->write();
-		$page->doRevertToLive();
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('ADMIN@example.org', $message);
+        $this->assertContains('reverted Page', $message);
+        $this->assertContains('My page', $message);
+    }
 
-		$message = $this->writer->getLastMessage();
-		$this->assertContains('ADMIN@example.org', $message);
-		$this->assertContains('reverted Page', $message);
-		$this->assertContains('My page', $message);
-	}
+    public function testDelete()
+    {
+        $this->logInWithPermission('ADMIN');
 
-	public function testDelete() {
-		$this->logInWithPermission('ADMIN');
+        $page = new Page();
+        $page->Title = 'My page';
+        $page->Content = 'This is my page content';
+        $page->doPublish();
 
-		$page = new Page();
-		$page->Title = 'My page';
-		$page->Content = 'This is my page content';
-		$page->doPublish();
+        $page->delete();
 
-		$page->delete();
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('ADMIN@example.org', $message);
+        $this->assertContains('deleted Page', $message);
+        $this->assertContains('My page', $message);
+    }
 
-		$message = $this->writer->getLastMessage();
-		$this->assertContains('ADMIN@example.org', $message);
-		$this->assertContains('deleted Page', $message);
-		$this->assertContains('My page', $message);
-	}
+    public function testRestoreToStage()
+    {
+        $this->logInWithPermission('ADMIN');
 
-	public function testRestoreToStage() {
-		$this->logInWithPermission('ADMIN');
+        $page = new Page();
+        $page->Title = 'My page';
+        $page->Content = 'Published';
+        $page->doPublish();
 
-		$page = new Page();
-		$page->Title = 'My page';
-		$page->Content = 'Published';
-		$page->doPublish();
+        $page->Content = 'This is my page content';
+        $page->doPublish();
+        $page->delete();
 
-		$page->Content = 'This is my page content';
-		$page->doPublish();
-		$page->delete();
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('ADMIN@example.org', $message);
+        $this->assertContains('deleted Page', $message);
+        $this->assertContains('My page', $message);
+    }
 
-		$message = $this->writer->getLastMessage();
-		$this->assertContains('ADMIN@example.org', $message);
-		$this->assertContains('deleted Page', $message);
-		$this->assertContains('My page', $message);
-	}
+    public function tearDown()
+    {
+        parent::tearDown();
 
-	public function tearDown() {
-		parent::tearDown();
-
-		SS_Log::remove_writer($this->writer);
-		unset($this->writer);
-	}
-
+        SS_Log::remove_writer($this->writer);
+        unset($this->writer);
+    }
 }
 
-class AuditLoggerTest_LogWriter extends Zend_Log_Writer_Abstract {
+class AuditLoggerTest_LogWriter extends Zend_Log_Writer_Abstract
+{
+    protected $messages = array();
 
-	protected $messages = array();
+    public static function factory($config)
+    {
+        return new self(null, $config);
+    }
 
-	static public function factory($config) {
-		return new AuditLoggerTest_LogWriter(null, $config);
-	}
+    public function _write($event)
+    {
+        array_push($this->messages, $event['message']['errstr']);
+    }
 
-	public function _write($event) {
-		array_push($this->messages, $event['message']['errstr']);
-	}
+    public function getLastMessage()
+    {
+        return end($this->messages);
+    }
 
-	public function getLastMessage() {
-		return end($this->messages);
-	}
-
-	public function getMessages() {
-		return $this->messages;
-	}
-
+    public function getMessages()
+    {
+        return $this->messages;
+    }
 }

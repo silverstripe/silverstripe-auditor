@@ -12,7 +12,7 @@ class AuditLogger extends SiteTreeExtension {
 		global $databaseConfig;
 
 		$current = DB::getConn();
-		if (!$current || @$current->isManipulationLoggingCapture) return; // If not yet set, or its already captured, just return
+		if (!$current || !$current->currentDatabase() || @$current->isManipulationLoggingCapture) return; // If not yet set, or its already captured, just return
 
 		$type = get_class($current);;
 		$file = TEMP_FOLDER . "/.cache.CLC.$type";
@@ -299,16 +299,25 @@ class AuditLogger extends SiteTreeExtension {
 			$this->owner->Email ?: $this->owner->Title,
 			$this->owner->ID
 		));
-	}	
+	}
 
 	/**
 	 * Log failed login attempts.
 	 */
 	public function authenticationFailed($data) {
-		self::log(sprintf(
-			'Failed login attempt using email "%s"',
-			$data['Email']
-		));
+		// LDAP authentication uses a "Login" POST field instead of Email.
+		$login = isset($data['Login'])
+			? $data['Login']
+			: (isset($data['Email']) ? $data['Email'] : '');
+
+		if (empty($login)) {
+			return self::log(
+				'Could not determine username/email of failed authentication. ' .
+				'This could be due to login form not using Email or Login field for POST data.'
+			);
+		}
+
+		self::log(sprintf('Failed login attempt using email "%s"', $login));
 	}
 
 	public function onBeforeInit() {

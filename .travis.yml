@@ -6,17 +6,17 @@ sudo: false
 
 matrix:
   include:
-    - php: 5.4
-      env: DB=MYSQL CORE_RELEASE=3.2
+    - php: 5.3
+      env: DB=MYSQL CORE_RELEASE=3.1
     - php: 5.6
       env: DB=MYSQL CORE_RELEASE=3.4
 
 before_script:
-  - composer self-update || true
-  - phpenv rehash
-  - git clone git://github.com/silverstripe-labs/silverstripe-travis-support.git ~/travis-support
-  - php ~/travis-support/travis_setup.php --source `pwd` --target ~/builds/ss
-  - cd ~/builds/ss
+ - phpenv rehash
+ - composer self-update
+ - git clone git://github.com/silverstripe-labs/silverstripe-travis-support.git ~/travis-support
+ - php ~/travis-support/travis_setup.php --source `pwd` --target ~/builds/ss
+ - cd ~/builds/ss
 
 script:
   - vendor/bin/phpunit auditor/tests/

@@ -1,8 +1,17 @@
 <?php
 
-class AuditLoggerFormatter extends SS_LogErrorFileFormatter
+namespace SilverStripe\Auditor;
+
+class RealIPProcessor
 {
-    protected function getClientIP()
+
+    public function __invoke(array $record)
+    {
+		$record['extra']['real_ip'] = $this->getClientIP();
+		return $record;
+	}
+
+    private function getClientIP()
     {
         $ipaddress = '';
         if (@$_SERVER['HTTP_CLIENT_IP']) {
@@ -24,22 +33,4 @@ class AuditLoggerFormatter extends SS_LogErrorFileFormatter
         return $ipaddress;
     }
 
-    public function format($event)
-    {
-        $message = sprintf('%s %s', $this->getClientIP(), $event['message']['errstr']);
-
-        return self::sanitise($message).PHP_EOL;
-    }
-
-    /**
-     * Helper method to sanitise output text which may contain linebreaks.
-     *
-     * @param string $message
-     *
-     * @return string Sanitised message
-     */
-    public static function sanitise($message)
-    {
-        return preg_replace('~\s+~u', ' ', $message);
-    }
 }

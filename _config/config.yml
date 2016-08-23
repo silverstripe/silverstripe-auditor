@@ -1,0 +1,22 @@
+---
+name: auditor
+---
+Injector:
+  AuditLogger:
+    class: 'AuditLogger'
+    factory: 'SilverStripe\Auditor\AuditFactory'
+MemberLoginForm:
+  extensions:
+    - 'SilverStripe\Auditor\AuditHook'
+RequestHandler:
+  extensions:
+    - 'SilverStripe\Auditor\AuditHook'
+Controller:
+  extensions:
+    - 'SilverStripe\Auditor\AuditHook'
+Member:
+  extensions:
+    - 'SilverStripe\Auditor\AuditHook'
+SiteTree:
+  extensions:
+    - 'SilverStripe\Auditor\AuditHook'

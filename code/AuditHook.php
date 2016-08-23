@@ -1,8 +1,21 @@
 <?php
 
-class AuditLogger extends SiteTreeExtension
+namespace SilverStripe\Auditor;
+
+/**
+ * Provides logging hooks that are inserted into Framework objects.
+ */
+class AuditHook extends \SiteTreeExtension
 {
-    const PRIORITY = 6;
+
+	protected function getAuditLogger() {
+		// We cannot use the 'dependencies' private property, because this will prevent us
+		// from injecting a mock logger for testing. This is because by the time the testing framework
+		// is instantiated, the part of the object graph where AuditLogger lives has already been created.
+		// In other words, Framework does not permit hooking in early enough to adjust the graph when
+		// 'dependencies' is used :-(
+		return \Injector::inst()->get('AuditLogger');
+	}
 
     /**
      * This will bind a new class dynamically so we can hook into manipulation
@@ -13,7 +26,7 @@ class AuditLogger extends SiteTreeExtension
     {
         global $databaseConfig;
 
-        $current = DB::getConn();
+        $current = \DB::getConn();
         if (!$current || !$current->currentDatabase() || @$current->isManipulationLoggingCapture) {
             return;
         } // If not yet set, or its already captured, just return
@@ -28,7 +41,7 @@ class AuditLogger extends SiteTreeExtension
 					public \$isManipulationLoggingCapture = true;
 
 					public function manipulate(\$manipulation) {
-						AuditLogger::handle_manipulation(\$manipulation);
+						\SilverStripe\Auditor\AuditHook::handle_manipulation(\$manipulation);
 						return parent::manipulate(\$manipulation);
 					}
 				}
@@ -50,12 +63,14 @@ class AuditLogger extends SiteTreeExtension
         // The connection might have had it's name changed (like if we're currently in a test)
         $captured->selectDatabase($current->currentDatabase());
 
-        DB::setConn($captured);
+        \DB::setConn($captured);
     }
 
     public static function handle_manipulation($manipulation)
     {
-        $currentMember = Member::currentUser();
+		$auditLogger = \Injector::inst()->get('AuditLogger');
+
+        $currentMember = \Member::currentUser();
         if (!($currentMember && $currentMember->exists())) {
             return false;
         }
@@ -94,7 +109,7 @@ class AuditLogger extends SiteTreeExtension
                     );
                 }
 
-                self::log(sprintf(
+                $auditLogger->info(sprintf(
                     '"%s" (ID: %s) %s (ID: %s, ClassName: %s, Title: "%s", %s)',
                     $currentMember->Email ?: $currentMember->Title,
                     $currentMember->ID,
@@ -108,7 +123,7 @@ class AuditLogger extends SiteTreeExtension
 
             // log PermissionRole being added to a Group
             if ($table == 'Group_Roles') {
-                $role = PermissionRole::get()->byId($details['fields']['PermissionRoleID']);
+                $role = \PermissionRole::get()->byId($details['fields']['PermissionRoleID']);
                 $group = Group::get()->byId($details['fields']['GroupID']);
 
                 // if the permission role isn't already applied to the group
@@ -117,7 +132,7 @@ class AuditLogger extends SiteTreeExtension
                     $details['fields']['GroupID'],
                     $details['fields']['PermissionRoleID']
                 ))->value()) {
-                    self::log(sprintf(
+                    $auditLogger->info(sprintf(
                         '"%s" (ID: %s) added PermissionRole "%s" (ID: %s) to Group "%s" (ID: %s)',
                         $currentMember->Email ?: $currentMember->Title,
                         $currentMember->ID,
@@ -131,16 +146,16 @@ class AuditLogger extends SiteTreeExtension
 
             // log Member added to a Group
             if ($table == 'Group_Members') {
-                $member = Member::get()->byId($details['fields']['MemberID']);
-                $group = Group::get()->byId($details['fields']['GroupID']);
+                $member = \Member::get()->byId($details['fields']['MemberID']);
+                $group = \Group::get()->byId($details['fields']['GroupID']);
 
                 // if the user isn't already in the group, log they've been added
-                if (!DB::query(sprintf(
+                if (!\DB::query(sprintf(
                     'SELECT "ID" FROM "Group_Members" WHERE "GroupID" = %s AND "MemberID" = %s',
                     $details['fields']['GroupID'],
                     $details['fields']['MemberID']
                 ))->value()) {
-                    self::log(sprintf(
+                    $auditLogger->info(sprintf(
                         '"%s" (ID: %s) added Member "%s" (ID: %s) to Group "%s" (ID: %s)',
                         $currentMember->Email ?: $currentMember->Title,
                         $currentMember->ID,
@@ -155,23 +170,11 @@ class AuditLogger extends SiteTreeExtension
     }
 
     /**
-     * Log the message, {@link AuditLoggerFormatter} will format the log line entry
-     * with IP address and date before writing to the log file.
-     */
-    public static function log($message)
-    {
-        if (isset($_SERVER['HTTP_REFERER'])) {
-            $message .= sprintf(' (Referer: %s)', $_SERVER['HTTP_REFERER']);
-        }
-        SS_Log::log(AuditLoggerFormatter::sanitise($message), self::PRIORITY);
-    }
-
-    /**
      * Log a record being published.
      */
     public function onAfterPublish(&$original)
     {
-        $member = Member::currentUser();
+        $member = \Member::currentUser();
         if (!($member && $member->exists())) {
             return false;
         }
@@ -196,7 +199,7 @@ class AuditLogger extends SiteTreeExtension
             $effectiveEditorGroups = $this->owner->CanEditType;
         }
 
-        self::log(sprintf(
+        $this->getAuditLogger()->info(sprintf(
             '"%s" (ID: %s) published %s "%s" (ID: %s, Version: %s, ClassName: %s, Effective ViewerGroups: %s, Effective EditorGroups: %s)',
             $member->Email ?: $member->Title,
             $member->ID,
@@ -215,12 +218,12 @@ class AuditLogger extends SiteTreeExtension
      */
     public function onAfterUnpublish()
     {
-        $member = Member::currentUser();
+        $member = \Member::currentUser();
         if (!($member && $member->exists())) {
             return false;
         }
 
-        self::log(sprintf(
+        $this->getAuditLogger()->info(sprintf(
             '"%s" (ID: %s) unpublished %s "%s" (ID: %s)',
             $member->Email ?: $member->Title,
             $member->ID,
@@ -235,12 +238,12 @@ class AuditLogger extends SiteTreeExtension
      */
     public function onAfterRevertToLive()
     {
-        $member = Member::currentUser();
+        $member = \Member::currentUser();
         if (!($member && $member->exists())) {
             return false;
         }
 
-        self::log(sprintf(
+        $this->getAuditLogger()->info(sprintf(
             '"%s" (ID: %s) reverted %s "%s" (ID: %s) to it\'s live version (#%d)',
             $member->Email ?: $member->Title,
             $member->ID,
@@ -256,12 +259,12 @@ class AuditLogger extends SiteTreeExtension
      */
     public function onAfterDuplicate()
     {
-        $member = Member::currentUser();
+        $member = \Member::currentUser();
         if (!($member && $member->exists())) {
             return false;
         }
 
-        self::log(sprintf(
+        $this->getAuditLogger()->info(sprintf(
             '"%s" (ID: %s) duplicated %s "%s" (ID: %s)',
             $member->Email ?: $member->Title,
             $member->ID,
@@ -276,12 +279,12 @@ class AuditLogger extends SiteTreeExtension
      */
     public function onAfterDelete()
     {
-        $member = Member::currentUser();
+        $member = \Member::currentUser();
         if (!($member && $member->exists())) {
             return false;
         }
 
-        self::log(sprintf(
+        $this->getAuditLogger()->info(sprintf(
             '"%s" (ID: %s) deleted %s "%s" (ID: %s)',
             $member->Email ?: $member->Title,
             $member->ID,
@@ -296,12 +299,12 @@ class AuditLogger extends SiteTreeExtension
      */
     public function onAfterRestoreToStage()
     {
-        $member = Member::currentUser();
+        $member = \Member::currentUser();
         if (!($member && $member->exists())) {
             return false;
         }
 
-        self::log(sprintf(
+        $this->getAuditLogger()->info(sprintf(
             '"%s" (ID: %s) restored %s "%s" to stage (ID: %s)',
             $member->Email ?: $member->Title,
             $member->ID,
@@ -316,7 +319,7 @@ class AuditLogger extends SiteTreeExtension
      */
     public function memberLoggedIn()
     {
-        self::log(sprintf(
+        $this->getAuditLogger()->info(sprintf(
             '"%s" (ID: %s) successfully logged in',
             $this->owner->Email ?: $this->owner->Title,
             $this->owner->ID
@@ -328,7 +331,7 @@ class AuditLogger extends SiteTreeExtension
      */
     public function memberAutoLoggedIn()
     {
-        self::log(sprintf(
+        $this->getAuditLogger()->info(sprintf(
             '"%s" (ID: %s) successfully restored autologin session',
             $this->owner->Email ?: $this->owner->Title,
             $this->owner->ID
@@ -346,13 +349,13 @@ class AuditLogger extends SiteTreeExtension
             : (isset($data['Email']) ? $data['Email'] : '');
 
         if (empty($login)) {
-            return self::log(
+            return $this->getAuditLogger()->warning(
                 'Could not determine username/email of failed authentication. '.
-                'This could be due to login form not using Email or Login field for POST data.'
+				'This could be due to login form not using Email or Login field for POST data.'
             );
         }
 
-        self::log(sprintf('Failed login attempt using email "%s"', $login));
+        $this->getAuditLogger()->info(sprintf('Failed login attempt using email "%s"', $login));
     }
 
     public function onBeforeInit()
@@ -366,10 +369,10 @@ class AuditLogger extends SiteTreeExtension
     public function onAfterInit()
     {
         // Suppress errors if dev/build necessary
-        if (!Security::database_is_ready()) {
+        if (!\Security::database_is_ready()) {
             return false;
         }
-        $currentMember = Member::currentUser();
+        $currentMember = \Member::currentUser();
         if (!($currentMember && $currentMember->exists())) {
             return false;
         }
@@ -383,7 +386,7 @@ class AuditLogger extends SiteTreeExtension
 
     protected function logPermissionDenied($statusCode, $member)
     {
-        self::log(sprintf(
+        $this->getAuditLogger()->info(sprintf(
             'HTTP code %s - "%s" (ID: %s) is denied access to %s',
             $statusCode,
             $member->Email ?: $member->Title,
@@ -397,7 +400,7 @@ class AuditLogger extends SiteTreeExtension
      */
     public function memberLoggedOut()
     {
-        self::log(sprintf(
+        $this->getAuditLogger()->info(sprintf(
             '"%s" (ID: %s) successfully logged out',
             $this->owner->Email ?: $this->owner->Title,
             $this->owner->ID

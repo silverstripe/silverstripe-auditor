@@ -1,8 +1,8 @@
 <?php
 
-require_once 'Zend/Log/Writer/Abstract.php';
+namespace SilverStripe\Auditor;
 
-class AuditLoggerTest extends FunctionalTest
+class AuditHookTest extends \FunctionalTest
 {
 
     protected $usesDatabase = true;
@@ -13,12 +13,14 @@ class AuditLoggerTest extends FunctionalTest
     {
         parent::setUp();
 
-        $this->writer = new AuditLoggerTest_LogWriter('SilverStripe', null, LOG_AUTH);
-        SS_Log::add_writer($this->writer, AuditLogger::PRIORITY, '=');
+        $this->writer = new AuditLoggerTest_Logger;
+		// Phase singleton out, so the message log is purged.
+		\Injector::inst()->unregisterNamedObject('AuditLogger');
+		\Injector::inst()->registerService($this->writer, 'AuditLogger');
 
         // ensure the manipulations are being captured, normally called in {@link AuditLogger::onBeforeInit()}
         // but tests will reset this during setting up, so we need to set it back again.
-        AuditLogger::bind_manipulation_capture();
+        AuditHook::bind_manipulation_capture();
     }
 
     public function testLoggingIn()
@@ -35,7 +37,7 @@ class AuditLoggerTest extends FunctionalTest
         // Simulate an autologin by calling the extension hook directly.
         // Member->autoLogin() relies on session and cookie state which we can't simulate here.
         $this->logInWithPermission('ADMIN');
-        $member = Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
+        $member = \Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
         $member->extend('memberAutoLoggedIn');
 
         $message = $this->writer->getLastMessage();
@@ -47,7 +49,7 @@ class AuditLoggerTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $member = Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
+        $member = \Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
         $member->logOut();
 
         $message = $this->writer->getLastMessage();
@@ -59,7 +61,7 @@ class AuditLoggerTest extends FunctionalTest
     {
         $this->session()->inst_set('loggedInAs', null);
 
-        $group = new Group(array('Title' => 'My group'));
+        $group = new \Group(array('Title' => 'My group'));
         $group->write();
 
         $message = $this->writer->getLastMessage();
@@ -70,7 +72,7 @@ class AuditLoggerTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $group = new Group(array('Title' => 'My group'));
+        $group = new \Group(array('Title' => 'My group'));
         $group->write();
 
         $message = $this->writer->getLastMessage();
@@ -83,10 +85,10 @@ class AuditLoggerTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $group = new Group(array('Title' => 'My group'));
+        $group = new \Group(array('Title' => 'My group'));
         $group->write();
 
-        $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe1'));
+        $member = new \Member(array('FirstName' => 'Joe', 'Email' => 'joe1'));
         $member->write();
 
         $group->Members()->add($member);
@@ -101,10 +103,10 @@ class AuditLoggerTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $group = new Group(array('Title' => 'My group'));
+        $group = new \Group(array('Title' => 'My group'));
         $group->write();
 
-        $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe2'));
+        $member = new \Member(array('FirstName' => 'Joe', 'Email' => 'joe2'));
         $member->write();
 
         $member->Groups()->add($group);
@@ -119,10 +121,10 @@ class AuditLoggerTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $group = new Group(array('Title' => 'My group'));
+        $group = new \Group(array('Title' => 'My group'));
         $group->write();
 
-        $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe3'));
+        $member = new \Member(array('FirstName' => 'Joe', 'Email' => 'joe3'));
         $member->write();
 
         $group->Members()->add($member);
@@ -138,10 +140,10 @@ class AuditLoggerTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $group = new Group(array('Title' => 'My group'));
+        $group = new \Group(array('Title' => 'My group'));
         $group->write();
 
-        $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe4'));
+        $member = new \Member(array('FirstName' => 'Joe', 'Email' => 'joe4'));
         $member->write();
 
         $member->Groups()->add($group);
@@ -157,7 +159,7 @@ class AuditLoggerTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new Page();
+        $page = new \Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
         $page->doPublish();
@@ -168,29 +170,11 @@ class AuditLoggerTest extends FunctionalTest
         $this->assertContains('My page', $message);
     }
 
-    /**
-     * Test log message sanitisation.
-     */
-    public function testSanitisation()
-    {
-        $this->logInWithPermission('ADMIN');
-
-        $page = new Page();
-        $page->Title = "My\npage\r\nYour Page";
-        $page->Content = 'This is my page content';
-        $page->doPublish();
-
-        $message = $this->writer->getLastMessage();
-        $this->assertContains('ADMIN@example.org', $message);
-        $this->assertContains('published Page', $message);
-        $this->assertContains('My page Your Page', $message);
-    }
-
     public function testUnpublishPage()
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new Page();
+        $page = new \Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
         $page->doPublish();
@@ -206,7 +190,7 @@ class AuditLoggerTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new Page();
+        $page = new \Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
         $page->write();
@@ -222,7 +206,7 @@ class AuditLoggerTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new Page();
+        $page = new \Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
         $page->doPublish();
@@ -241,7 +225,7 @@ class AuditLoggerTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new Page();
+        $page = new \Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
         $page->doPublish();
@@ -258,7 +242,7 @@ class AuditLoggerTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new Page();
+        $page = new \Page();
         $page->Title = 'My page';
         $page->Content = 'Published';
         $page->doPublish();
@@ -277,24 +261,19 @@ class AuditLoggerTest extends FunctionalTest
     {
         parent::tearDown();
 
-        SS_Log::remove_writer($this->writer);
+        \SS_Log::remove_writer($this->writer);
         unset($this->writer);
     }
 }
 
-class AuditLoggerTest_LogWriter extends Zend_Log_Writer_Abstract
+class AuditLoggerTest_Logger extends \Psr\Log\AbstractLogger
 {
     protected $messages = array();
 
-    public static function factory($config)
+	public function log($level, $message, array $context = array())
     {
-        return new self(null, $config);
-    }
-
-    public function _write($event)
-    {
-        array_push($this->messages, $event['message']['errstr']);
-    }
+        array_push($this->messages, $message);
+	}
 
     public function getLastMessage()
     {

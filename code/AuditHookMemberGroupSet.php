@@ -1,6 +1,8 @@
 <?php
 
-class AuditLoggerManyManyList extends ManyManyList
+namespace SilverStripe\Auditor;
+
+class AuditHookMemberGroupSet extends \Member_GroupSet
 {
     /**
      * Overload {@link ManyManyList::removeByID()} so we can log
@@ -11,13 +13,13 @@ class AuditLoggerManyManyList extends ManyManyList
         parent::removeByID($itemID);
 
         if ($this->getJoinTable() == 'Group_Members') {
-            $currentMember = Member::currentUser();
+            $currentMember = \Member::currentUser();
             if (!($currentMember && $currentMember->exists())) {
                 return;
             }
 
-            $member = Member::get()->byId($itemID);
-            $group = Group::get()->byId($this->getForeignID());
+            $group = \Group::get()->byId($itemID);
+            $member = \Member::get()->byId($this->getForeignID());
 
             if (!$group) {
                 return;
@@ -26,7 +28,7 @@ class AuditLoggerManyManyList extends ManyManyList
                 return;
             }
 
-            AuditLogger::log(sprintf(
+            $this->getAuditLogger()->info(sprintf(
                 '"%s" (ID: %s) removed Member "%s" (ID: %s) from Group "%s" (ID: %s)',
                 $currentMember->Email ?: $currentMember->Title,
                 $currentMember->ID,
@@ -37,4 +39,9 @@ class AuditLoggerManyManyList extends ManyManyList
             ));
         }
     }
+
+	protected function getAuditLogger() {
+		// See note on AuditHook::getAuditLogger
+		return \Injector::inst()->get('AuditLogger');
+	}
 }

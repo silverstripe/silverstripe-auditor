@@ -2,8 +2,6 @@
 
 namespace SilverStripe\Auditor;
 
-require_once BASE_PATH . '/vendor/autoload.php';
-
 /**
  * Logs are written using a side-channel, because audit trail should not be mixed
  * up with regular PHP errors.

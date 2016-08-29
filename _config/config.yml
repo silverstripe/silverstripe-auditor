@@ -5,10 +5,13 @@ Injector:
   AuditLogger:
     class: 'AuditLogger'
     factory: 'SilverStripe\Auditor\AuditFactory'
+  ManyManyList:
+    class: 'SilverStripe\Auditor\AuditHookManyManyList'
+    type: prototype
+  Member_GroupSet:
+    class: 'SilverStripe\Auditor\AuditHookMemberGroupSet'
+    type: prototype
 MemberLoginForm:
-  extensions:
-    - 'SilverStripe\Auditor\AuditHook'
-RequestHandler:
   extensions:
     - 'SilverStripe\Auditor\AuditHook'
 Controller:

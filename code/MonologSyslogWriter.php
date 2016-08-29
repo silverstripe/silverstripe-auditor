@@ -3,7 +3,6 @@
 namespace SilverStripe\Auditor;
 
 require_once BASE_PATH . '/framework/thirdparty/Zend/Log/Writer/Abstract.php';
-require_once BASE_PATH . '/vendor/autoload.php';
 
 /**
  * Alternative monolog writer for SS_Log, for use when auditor module is in operation.

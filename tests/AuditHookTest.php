@@ -1,6 +1,6 @@
 <?php
 
-namespace SilverStripe\Auditor;
+namespace SilverStripe\Auditor\Tests;
 
 class AuditHookTest extends \FunctionalTest
 {
@@ -20,7 +20,7 @@ class AuditHookTest extends \FunctionalTest
 
         // ensure the manipulations are being captured, normally called in {@link AuditLogger::onBeforeInit()}
         // but tests will reset this during setting up, so we need to set it back again.
-        AuditHook::bind_manipulation_capture();
+        \Silverstripe\Auditor\AuditHook::bind_manipulation_capture();
     }
 
     public function testLoggingIn()

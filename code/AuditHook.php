@@ -124,10 +124,10 @@ class AuditHook extends \SiteTreeExtension
             // log PermissionRole being added to a Group
             if ($table == 'Group_Roles') {
                 $role = \PermissionRole::get()->byId($details['fields']['PermissionRoleID']);
-                $group = Group::get()->byId($details['fields']['GroupID']);
+                $group = \Group::get()->byId($details['fields']['GroupID']);
 
                 // if the permission role isn't already applied to the group
-                if (!DB::query(sprintf(
+                if (!\DB::query(sprintf(
                     'SELECT "ID" FROM "Group_Roles" WHERE "GroupID" = %s AND "PermissionRoleID" = %s',
                     $details['fields']['GroupID'],
                     $details['fields']['PermissionRoleID']

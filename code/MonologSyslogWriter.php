@@ -61,7 +61,7 @@ class MonologSysLogWriter extends \Zend_Log_Writer_Abstract {
 			$event['message']['errfile']
 		);
 
-		$context = [];
+		$context = array();
 		if (!empty($event['info'])) {
 			$context = $event['info'];
 		}

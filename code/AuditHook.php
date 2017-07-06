@@ -26,7 +26,7 @@ class AuditHook extends \SiteTreeExtension
     {
         global $databaseConfig;
 
-        $current = \DB::getConn();
+        $current = \DB::get_conn();
         if (!$current || !$current->currentDatabase() || @$current->isManipulationLoggingCapture) {
             return;
         } // If not yet set, or its already captured, just return

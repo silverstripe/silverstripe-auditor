@@ -2,8 +2,8 @@
 
 namespace SilverStripe\Auditor;
 
-use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Control\HTTPRequest;
+use SilverStripe\Core\Injector\Injector;
 
 class RealIPProcessor
 {

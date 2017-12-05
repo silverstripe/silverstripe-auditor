@@ -2,10 +2,13 @@
 
 namespace SilverStripe\Auditor\Tests;
 
+use Page;
+use Silverstripe\Auditor\AuditHook;
+use SilverStripe\Auditor\Tests\AuditHookTest\Logger;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\Security\Member;
-use SilverStripe\Security\Group;
 use SilverStripe\Dev\FunctionalTest;
+use SilverStripe\Security\Group;
+use SilverStripe\Security\Member;
 
 class AuditHookTest extends FunctionalTest
 {
@@ -13,18 +16,19 @@ class AuditHookTest extends FunctionalTest
 
     protected $writer = null;
 
-    public function setUp()
+    protected function setUp()
     {
         parent::setUp();
 
-        $this->writer = new AuditLoggerTest_Logger;
+        $this->writer = new Logger;
+
         // Phase singleton out, so the message log is purged.
         Injector::inst()->unregisterNamedObject('AuditLogger');
         Injector::inst()->registerService($this->writer, 'AuditLogger');
 
         // ensure the manipulations are being captured, normally called in {@link AuditLogger::onBeforeInit()}
         // but tests will reset this during setting up, so we need to set it back again.
-        \Silverstripe\Auditor\AuditHook::bind_manipulation_capture();
+        AuditHook::bind_manipulation_capture();
     }
 
     public function testLoggingIn()
@@ -163,7 +167,7 @@ class AuditHookTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new \Page();
+        $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
         $page->doPublish();
@@ -178,7 +182,7 @@ class AuditHookTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new \Page();
+        $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
         $page->doPublish();
@@ -194,7 +198,7 @@ class AuditHookTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new \Page();
+        $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
         $page->write();
@@ -210,7 +214,7 @@ class AuditHookTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new \Page();
+        $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
         $page->doPublish();
@@ -229,7 +233,7 @@ class AuditHookTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new \Page();
+        $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
         $page->doPublish();
@@ -246,7 +250,7 @@ class AuditHookTest extends FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new \Page();
+        $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'Published';
         $page->doPublish();
@@ -259,33 +263,5 @@ class AuditHookTest extends FunctionalTest
         $this->assertContains('ADMIN@example.org', $message);
         $this->assertContains('deleted Page', $message);
         $this->assertContains('My page', $message);
-    }
-
-    public function tearDown()
-    {
-        parent::tearDown();
-
-        \SS_Log::remove_writer($this->writer);
-        unset($this->writer);
-    }
-}
-
-class AuditLoggerTest_Logger extends \Psr\Log\AbstractLogger
-{
-    protected $messages = array();
-
-    public function log($level, $message, array $context = array())
-    {
-        array_push($this->messages, $message);
-    }
-
-    public function getLastMessage()
-    {
-        return end($this->messages);
-    }
-
-    public function getMessages()
-    {
-        return $this->messages;
     }
 }

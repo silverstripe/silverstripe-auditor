@@ -2,10 +2,10 @@
 
 namespace SilverStripe\Auditor;
 
-use SilverStripe\Security\Member;
-use SilverStripe\Security\Group;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\ManyManyList;
+use SilverStripe\Security\Member;
+use SilverStripe\Security\Group;
 
 class AuditHookManyManyList extends ManyManyList
 {

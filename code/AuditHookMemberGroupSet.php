@@ -2,9 +2,9 @@
 
 namespace SilverStripe\Auditor;
 
-use SilverStripe\Security\Member;
-use SilverStripe\Security\Group;
 use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Security\Group;
+use SilverStripe\Security\Member;
 use SilverStripe\Security\Member_GroupSet;
 
 class AuditHookMemberGroupSet extends Member_GroupSet

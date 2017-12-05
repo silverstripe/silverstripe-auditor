@@ -2,14 +2,14 @@
 
 namespace SilverStripe\Auditor;
 
+use SilverStripe\CMS\Model\SiteTreeExtension;
+use SilverStripe\Control\Email\Email;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DB;
-use SilverStripe\Security\Member;
 use SilverStripe\Security\Group;
+use SilverStripe\Security\Member;
 use SilverStripe\Security\PermissionRole;
-use SilverStripe\Control\Email\Email;
 use SilverStripe\Security\Security;
-use SilverStripe\CMS\Model\SiteTreeExtension;
 
 /**
  * Provides logging hooks that are inserted into Framework objects.

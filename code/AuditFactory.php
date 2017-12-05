@@ -2,11 +2,13 @@
 
 namespace SilverStripe\Auditor;
 
+use SilverStripe\Core\Injector\Factory;
+
 /**
  * Logs are written using a side-channel, because audit trail should not be mixed
  * up with regular PHP errors.
  */
-class AuditFactory implements \SilverStripe\Framework\Injector\Factory
+class AuditFactory implements Factory
 {
     public function create($service, array $params = array())
     {

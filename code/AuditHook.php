@@ -2,10 +2,19 @@
 
 namespace SilverStripe\Auditor;
 
+use SilverStripe\Core\Injector\Injector;
+use SilverStripe\ORM\DB;
+use SilverStripe\Security\Member;
+use SilverStripe\Security\Group;
+use SilverStripe\Security\PermissionRole;
+use SilverStripe\Control\Email\Email;
+use SilverStripe\Security\Security;
+use SilverStripe\CMS\Model\SiteTreeExtension;
+
 /**
  * Provides logging hooks that are inserted into Framework objects.
  */
-class AuditHook extends \SiteTreeExtension
+class AuditHook extends SiteTreeExtension
 {
     protected function getAuditLogger()
     {
@@ -14,7 +23,7 @@ class AuditHook extends \SiteTreeExtension
         // is instantiated, the part of the object graph where AuditLogger lives has already been created.
         // In other words, Framework does not permit hooking in early enough to adjust the graph when
         // 'dependencies' is used :-(
-        return \Injector::inst()->get('AuditLogger');
+        return Injector::inst()->get('AuditLogger');
     }
 
     /**
@@ -26,7 +35,7 @@ class AuditHook extends \SiteTreeExtension
     {
         global $databaseConfig;
 
-        $current = \DB::getConn();
+        $current = DB::getConn();
         if (!$current || !$current->currentDatabase() || @$current->isManipulationLoggingCapture) {
             return;
         } // If not yet set, or its already captured, just return
@@ -63,14 +72,14 @@ class AuditHook extends \SiteTreeExtension
         // The connection might have had it's name changed (like if we're currently in a test)
         $captured->selectDatabase($current->currentDatabase());
 
-        \DB::setConn($captured);
+        DB::setConn($captured);
     }
 
     public static function handle_manipulation($manipulation)
     {
-        $auditLogger = \Injector::inst()->get('AuditLogger');
+        $auditLogger = Injector::inst()->get('AuditLogger');
 
-        $currentMember = \Member::currentUser();
+        $currentMember = Member::currentUser();
         if (!($currentMember && $currentMember->exists())) {
             return false;
         }
@@ -81,7 +90,7 @@ class AuditHook extends \SiteTreeExtension
             }
 
             // logging writes to specific tables (just not when logging in, as it's noise)
-            if (in_array($table, array('Member', 'Group', 'PermissionRole')) && !preg_match('/Security/', @$_SERVER['REQUEST_URI'])) {
+            if (in_array($table, array(Member::class, Group::class, PermissionRole::class)) && !preg_match('/Security/', @$_SERVER['REQUEST_URI'])) {
                 $data = $table::get()->byId($details['id']);
                 if (!$data) {
                     continue;
@@ -89,20 +98,20 @@ class AuditHook extends \SiteTreeExtension
                 $actionText = 'modified '.$table;
 
                 $extendedText = '';
-                if ($table == 'Group') {
+                if ($table == Group::class) {
                     $extendedText = sprintf(
                         'Effective permissions: %s',
                         implode(array_values($data->Permissions()->map('ID', 'Code')->toArray()), ', ')
                     );
                 }
-                if ($table == 'PermissionRole') {
+                if ($table == PermissionRole::class) {
                     $extendedText = sprintf(
                         'Effective groups: %s, Effective permissions: %s',
                         implode(array_values($data->Groups()->map('ID', 'Title')->toArray()), ', '),
                         implode(array_values($data->Codes()->map('ID', 'Code')->toArray()), ', ')
                     );
                 }
-                if ($table == 'Member') {
+                if ($table == Member::class) {
                     $extendedText = sprintf(
                         'Effective groups: %s',
                         implode(array_values($data->Groups()->map('ID', 'Title')->toArray()), ', ')
@@ -123,11 +132,11 @@ class AuditHook extends \SiteTreeExtension
 
             // log PermissionRole being added to a Group
             if ($table == 'Group_Roles') {
-                $role = \PermissionRole::get()->byId($details['fields']['PermissionRoleID']);
-                $group = \Group::get()->byId($details['fields']['GroupID']);
+                $role = PermissionRole::get()->byId($details['fields']['PermissionRoleID']);
+                $group = Group::get()->byId($details['fields']['GroupID']);
 
                 // if the permission role isn't already applied to the group
-                if (!\DB::query(sprintf(
+                if (!DB::query(sprintf(
                     'SELECT "ID" FROM "Group_Roles" WHERE "GroupID" = %s AND "PermissionRoleID" = %s',
                     $details['fields']['GroupID'],
                     $details['fields']['PermissionRoleID']
@@ -146,11 +155,11 @@ class AuditHook extends \SiteTreeExtension
 
             // log Member added to a Group
             if ($table == 'Group_Members') {
-                $member = \Member::get()->byId($details['fields']['MemberID']);
-                $group = \Group::get()->byId($details['fields']['GroupID']);
+                $member = Member::get()->byId($details['fields']['MemberID']);
+                $group = Group::get()->byId($details['fields']['GroupID']);
 
                 // if the user isn't already in the group, log they've been added
-                if (!\DB::query(sprintf(
+                if (!DB::query(sprintf(
                     'SELECT "ID" FROM "Group_Members" WHERE "GroupID" = %s AND "MemberID" = %s',
                     $details['fields']['GroupID'],
                     $details['fields']['MemberID']
@@ -174,7 +183,7 @@ class AuditHook extends \SiteTreeExtension
      */
     public function onAfterPublish(&$original)
     {
-        $member = \Member::currentUser();
+        $member = Member::currentUser();
         if (!($member && $member->exists())) {
             return false;
         }
@@ -218,7 +227,7 @@ class AuditHook extends \SiteTreeExtension
      */
     public function onAfterUnpublish()
     {
-        $member = \Member::currentUser();
+        $member = Member::currentUser();
         if (!($member && $member->exists())) {
             return false;
         }
@@ -238,7 +247,7 @@ class AuditHook extends \SiteTreeExtension
      */
     public function onAfterRevertToLive()
     {
-        $member = \Member::currentUser();
+        $member = Member::currentUser();
         if (!($member && $member->exists())) {
             return false;
         }
@@ -259,7 +268,7 @@ class AuditHook extends \SiteTreeExtension
      */
     public function onAfterDuplicate()
     {
-        $member = \Member::currentUser();
+        $member = Member::currentUser();
         if (!($member && $member->exists())) {
             return false;
         }
@@ -279,7 +288,7 @@ class AuditHook extends \SiteTreeExtension
      */
     public function onAfterDelete()
     {
-        $member = \Member::currentUser();
+        $member = Member::currentUser();
         if (!($member && $member->exists())) {
             return false;
         }
@@ -299,7 +308,7 @@ class AuditHook extends \SiteTreeExtension
      */
     public function onAfterRestoreToStage()
     {
-        $member = \Member::currentUser();
+        $member = Member::currentUser();
         if (!($member && $member->exists())) {
             return false;
         }
@@ -346,7 +355,7 @@ class AuditHook extends \SiteTreeExtension
         // LDAP authentication uses a "Login" POST field instead of Email.
         $login = isset($data['Login'])
             ? $data['Login']
-            : (isset($data['Email']) ? $data['Email'] : '');
+            : (isset($data[Email::class]) ? $data[Email::class] : '');
 
         if (empty($login)) {
             return $this->getAuditLogger()->warning(
@@ -369,10 +378,10 @@ class AuditHook extends \SiteTreeExtension
     public function onAfterInit()
     {
         // Suppress errors if dev/build necessary
-        if (!\Security::database_is_ready()) {
+        if (!Security::database_is_ready()) {
             return false;
         }
-        $currentMember = \Member::currentUser();
+        $currentMember = Member::currentUser();
         if (!($currentMember && $currentMember->exists())) {
             return false;
         }

@@ -2,7 +2,12 @@
 
 namespace SilverStripe\Auditor;
 
-class AuditHookManyManyList extends \ManyManyList
+use SilverStripe\Security\Member;
+use SilverStripe\Security\Group;
+use SilverStripe\Core\Injector\Injector;
+use SilverStripe\ORM\ManyManyList;
+
+class AuditHookManyManyList extends ManyManyList
 {
     /**
      * Overload {@link ManyManyList::removeByID()} so we can log
@@ -13,13 +18,13 @@ class AuditHookManyManyList extends \ManyManyList
         parent::removeByID($itemID);
 
         if ($this->getJoinTable() == 'Group_Members') {
-            $currentMember = \Member::currentUser();
+            $currentMember = Member::currentUser();
             if (!($currentMember && $currentMember->exists())) {
                 return;
             }
 
-            $member = \Member::get()->byId($itemID);
-            $group = \Group::get()->byId($this->getForeignID());
+            $member = Member::get()->byId($itemID);
+            $group = Group::get()->byId($this->getForeignID());
 
             if (!$group) {
                 return;
@@ -43,6 +48,6 @@ class AuditHookManyManyList extends \ManyManyList
     protected function getAuditLogger()
     {
         // See note on AuditHook::getAuditLogger
-        return \Injector::inst()->get('AuditLogger');
+        return Injector::inst()->get('AuditLogger');
     }
 }

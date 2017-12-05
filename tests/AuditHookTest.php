@@ -2,7 +2,12 @@
 
 namespace SilverStripe\Auditor\Tests;
 
-class AuditHookTest extends \FunctionalTest
+use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Security\Member;
+use SilverStripe\Security\Group;
+use SilverStripe\Dev\FunctionalTest;
+
+class AuditHookTest extends FunctionalTest
 {
     protected $usesDatabase = true;
 
@@ -14,8 +19,8 @@ class AuditHookTest extends \FunctionalTest
 
         $this->writer = new AuditLoggerTest_Logger;
         // Phase singleton out, so the message log is purged.
-        \Injector::inst()->unregisterNamedObject('AuditLogger');
-        \Injector::inst()->registerService($this->writer, 'AuditLogger');
+        Injector::inst()->unregisterNamedObject('AuditLogger');
+        Injector::inst()->registerService($this->writer, 'AuditLogger');
 
         // ensure the manipulations are being captured, normally called in {@link AuditLogger::onBeforeInit()}
         // but tests will reset this during setting up, so we need to set it back again.
@@ -36,7 +41,7 @@ class AuditHookTest extends \FunctionalTest
         // Simulate an autologin by calling the extension hook directly.
         // Member->autoLogin() relies on session and cookie state which we can't simulate here.
         $this->logInWithPermission('ADMIN');
-        $member = \Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
+        $member = Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
         $member->extend('memberAutoLoggedIn');
 
         $message = $this->writer->getLastMessage();
@@ -48,7 +53,7 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $member = \Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
+        $member = Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
         $member->logOut();
 
         $message = $this->writer->getLastMessage();
@@ -60,7 +65,7 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->session()->inst_set('loggedInAs', null);
 
-        $group = new \Group(array('Title' => 'My group'));
+        $group = new Group(array('Title' => 'My group'));
         $group->write();
 
         $message = $this->writer->getLastMessage();
@@ -71,23 +76,23 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $group = new \Group(array('Title' => 'My group'));
+        $group = new Group(array('Title' => 'My group'));
         $group->write();
 
         $message = $this->writer->getLastMessage();
         $this->assertContains('ADMIN@example.org', $message);
         $this->assertContains('modified', $message);
-        $this->assertContains('Group', $message);
+        $this->assertContains(Group::class, $message);
     }
 
     public function testAddMemberToGroupUsingGroupMembersRelation()
     {
         $this->logInWithPermission('ADMIN');
 
-        $group = new \Group(array('Title' => 'My group'));
+        $group = new Group(array('Title' => 'My group'));
         $group->write();
 
-        $member = new \Member(array('FirstName' => 'Joe', 'Email' => 'joe1'));
+        $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe1'));
         $member->write();
 
         $group->Members()->add($member);
@@ -102,10 +107,10 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $group = new \Group(array('Title' => 'My group'));
+        $group = new Group(array('Title' => 'My group'));
         $group->write();
 
-        $member = new \Member(array('FirstName' => 'Joe', 'Email' => 'joe2'));
+        $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe2'));
         $member->write();
 
         $member->Groups()->add($group);
@@ -120,10 +125,10 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $group = new \Group(array('Title' => 'My group'));
+        $group = new Group(array('Title' => 'My group'));
         $group->write();
 
-        $member = new \Member(array('FirstName' => 'Joe', 'Email' => 'joe3'));
+        $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe3'));
         $member->write();
 
         $group->Members()->add($member);
@@ -139,10 +144,10 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $group = new \Group(array('Title' => 'My group'));
+        $group = new Group(array('Title' => 'My group'));
         $group->write();
 
-        $member = new \Member(array('FirstName' => 'Joe', 'Email' => 'joe4'));
+        $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe4'));
         $member->write();
 
         $member->Groups()->add($group);

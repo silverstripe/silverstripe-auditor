@@ -40,8 +40,9 @@ class AuditHookManyManyList extends \ManyManyList
         }
     }
 
-	protected function getAuditLogger() {
-		// See note on AuditHook::getAuditLogger
-		return \Injector::inst()->get('AuditLogger');
-	}
+    protected function getAuditLogger()
+    {
+        // See note on AuditHook::getAuditLogger
+        return \Injector::inst()->get('AuditLogger');
+    }
 }

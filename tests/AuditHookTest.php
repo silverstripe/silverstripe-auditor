@@ -4,7 +4,6 @@ namespace SilverStripe\Auditor\Tests;
 
 class AuditHookTest extends \FunctionalTest
 {
-
     protected $usesDatabase = true;
 
     protected $writer = null;
@@ -14,9 +13,9 @@ class AuditHookTest extends \FunctionalTest
         parent::setUp();
 
         $this->writer = new AuditLoggerTest_Logger;
-		// Phase singleton out, so the message log is purged.
-		\Injector::inst()->unregisterNamedObject('AuditLogger');
-		\Injector::inst()->registerService($this->writer, 'AuditLogger');
+        // Phase singleton out, so the message log is purged.
+        \Injector::inst()->unregisterNamedObject('AuditLogger');
+        \Injector::inst()->registerService($this->writer, 'AuditLogger');
 
         // ensure the manipulations are being captured, normally called in {@link AuditLogger::onBeforeInit()}
         // but tests will reset this during setting up, so we need to set it back again.
@@ -270,10 +269,10 @@ class AuditLoggerTest_Logger extends \Psr\Log\AbstractLogger
 {
     protected $messages = array();
 
-	public function log($level, $message, array $context = array())
+    public function log($level, $message, array $context = array())
     {
         array_push($this->messages, $message);
-	}
+    }
 
     public function getLastMessage()
     {

@@ -7,15 +7,15 @@ namespace SilverStripe\Auditor;
  */
 class AuditHook extends \SiteTreeExtension
 {
-
-	protected function getAuditLogger() {
-		// We cannot use the 'dependencies' private property, because this will prevent us
-		// from injecting a mock logger for testing. This is because by the time the testing framework
-		// is instantiated, the part of the object graph where AuditLogger lives has already been created.
-		// In other words, Framework does not permit hooking in early enough to adjust the graph when
-		// 'dependencies' is used :-(
-		return \Injector::inst()->get('AuditLogger');
-	}
+    protected function getAuditLogger()
+    {
+        // We cannot use the 'dependencies' private property, because this will prevent us
+        // from injecting a mock logger for testing. This is because by the time the testing framework
+        // is instantiated, the part of the object graph where AuditLogger lives has already been created.
+        // In other words, Framework does not permit hooking in early enough to adjust the graph when
+        // 'dependencies' is used :-(
+        return \Injector::inst()->get('AuditLogger');
+    }
 
     /**
      * This will bind a new class dynamically so we can hook into manipulation
@@ -68,7 +68,7 @@ class AuditHook extends \SiteTreeExtension
 
     public static function handle_manipulation($manipulation)
     {
-		$auditLogger = \Injector::inst()->get('AuditLogger');
+        $auditLogger = \Injector::inst()->get('AuditLogger');
 
         $currentMember = \Member::currentUser();
         if (!($currentMember && $currentMember->exists())) {
@@ -351,7 +351,7 @@ class AuditHook extends \SiteTreeExtension
         if (empty($login)) {
             return $this->getAuditLogger()->warning(
                 'Could not determine username/email of failed authentication. '.
-				'This could be due to login form not using Email or Login field for POST data.'
+                'This could be due to login form not using Email or Login field for POST data.'
             );
         }
 

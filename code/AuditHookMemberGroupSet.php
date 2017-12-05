@@ -40,8 +40,9 @@ class AuditHookMemberGroupSet extends \Member_GroupSet
         }
     }
 
-	protected function getAuditLogger() {
-		// See note on AuditHook::getAuditLogger
-		return \Injector::inst()->get('AuditLogger');
-	}
+    protected function getAuditLogger()
+    {
+        // See note on AuditHook::getAuditLogger
+        return \Injector::inst()->get('AuditLogger');
+    }
 }

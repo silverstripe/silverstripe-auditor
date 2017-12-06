@@ -4,8 +4,9 @@ namespace SilverStripe\Auditor;
 
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\ManyManyList;
-use SilverStripe\Security\Member;
 use SilverStripe\Security\Group;
+use SilverStripe\Security\Member;
+use SilverStripe\Security\Security;
 
 class AuditHookManyManyList extends ManyManyList
 {
@@ -18,7 +19,7 @@ class AuditHookManyManyList extends ManyManyList
         parent::removeByID($itemID);
 
         if ($this->getJoinTable() == 'Group_Members') {
-            $currentMember = Member::currentUser();
+            $currentMember = Security::getCurrentUser();
             if (!($currentMember && $currentMember->exists())) {
                 return;
             }

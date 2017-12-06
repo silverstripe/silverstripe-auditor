@@ -3,8 +3,9 @@
 namespace SilverStripe\Auditor\Tests\AuditHookTest;
 
 use Psr\Log\AbstractLogger;
+use SilverStripe\Dev\TestOnly;
 
-class Logger extends AbstractLogger
+class Logger extends AbstractLogger implements TestOnly
 {
     protected $messages = [];
 

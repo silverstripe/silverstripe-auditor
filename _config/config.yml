@@ -1,25 +1,23 @@
 ---
 name: auditor
 ---
-Injector:
+SilverStripe\Core\Injector\Injector:
   AuditLogger:
-    class: 'AuditLogger'
-    factory: 'SilverStripe\Auditor\AuditFactory'
-  ManyManyList:
-    class: 'SilverStripe\Auditor\AuditHookManyManyList'
-    type: prototype
-  Member_GroupSet:
-    class: 'SilverStripe\Auditor\AuditHookMemberGroupSet'
-    type: prototype
-MemberLoginForm:
+    class: AuditLogger
+    factory: SilverStripe\Auditor\AuditFactory
+  SilverStripe\ORM\ManyManyList:
+    class: SilverStripe\Auditor\AuditHookManyManyList
+  SilverStripe\Security\Member_GroupSet:
+    class: SilverStripe\Auditor\AuditHookMemberGroupSet
+
+SilverStripe\Control\Controller:
   extensions:
-    - 'SilverStripe\Auditor\AuditHook'
-Controller:
+    - SilverStripe\Auditor\AuditHook
+
+SilverStripe\Security\Member:
   extensions:
-    - 'SilverStripe\Auditor\AuditHook'
-Member:
+    - SilverStripe\Auditor\AuditHook
+
+SilverStripe\CMS\Model\SiteTree:
   extensions:
-    - 'SilverStripe\Auditor\AuditHook'
-SiteTree:
-  extensions:
-    - 'SilverStripe\Auditor\AuditHook'
+    - SilverStripe\Auditor\AuditHook

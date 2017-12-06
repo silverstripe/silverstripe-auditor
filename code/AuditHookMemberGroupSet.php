@@ -2,7 +2,13 @@
 
 namespace SilverStripe\Auditor;
 
-class AuditHookMemberGroupSet extends \Member_GroupSet
+use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Security\Group;
+use SilverStripe\Security\Member;
+use SilverStripe\Security\Member_GroupSet;
+use SilverStripe\Security\Security;
+
+class AuditHookMemberGroupSet extends Member_GroupSet
 {
     /**
      * Overload {@link ManyManyList::removeByID()} so we can log
@@ -12,14 +18,14 @@ class AuditHookMemberGroupSet extends \Member_GroupSet
     {
         parent::removeByID($itemID);
 
-        if ($this->getJoinTable() == 'Group_Members') {
-            $currentMember = \Member::currentUser();
-            if (!($currentMember && $currentMember->exists())) {
+        if ($this->getJoinTable() === 'Group_Members') {
+            $currentMember = Security::getCurrentUser();
+            if (!$currentMember || !$currentMember->exists()) {
                 return;
             }
 
-            $group = \Group::get()->byId($itemID);
-            $member = \Member::get()->byId($this->getForeignID());
+            $group = Group::get()->byId($itemID);
+            $member = Member::get()->byId($this->getForeignID());
 
             if (!$group) {
                 return;
@@ -40,8 +46,9 @@ class AuditHookMemberGroupSet extends \Member_GroupSet
         }
     }
 
-	protected function getAuditLogger() {
-		// See note on AuditHook::getAuditLogger
-		return \Injector::inst()->get('AuditLogger');
-	}
+    protected function getAuditLogger()
+    {
+        // See note on AuditHook::getAuditLogger
+        return Injector::inst()->get('AuditLogger');
+    }
 }

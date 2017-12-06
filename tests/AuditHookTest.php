@@ -2,25 +2,33 @@
 
 namespace SilverStripe\Auditor\Tests;
 
-class AuditHookTest extends \FunctionalTest
-{
+use Page;
+use Silverstripe\Auditor\AuditHook;
+use SilverStripe\Auditor\Tests\AuditHookTest\Logger;
+use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Dev\FunctionalTest;
+use SilverStripe\Security\Group;
+use SilverStripe\Security\Member;
 
+class AuditHookTest extends FunctionalTest
+{
     protected $usesDatabase = true;
 
     protected $writer = null;
 
-    public function setUp()
+    protected function setUp()
     {
         parent::setUp();
 
-        $this->writer = new AuditLoggerTest_Logger;
-		// Phase singleton out, so the message log is purged.
-		\Injector::inst()->unregisterNamedObject('AuditLogger');
-		\Injector::inst()->registerService($this->writer, 'AuditLogger');
+        $this->writer = new Logger;
+
+        // Phase singleton out, so the message log is purged.
+        Injector::inst()->unregisterNamedObject('AuditLogger');
+        Injector::inst()->registerService($this->writer, 'AuditLogger');
 
         // ensure the manipulations are being captured, normally called in {@link AuditLogger::onBeforeInit()}
         // but tests will reset this during setting up, so we need to set it back again.
-        \Silverstripe\Auditor\AuditHook::bind_manipulation_capture();
+        AuditHook::bind_manipulation_capture();
     }
 
     public function testLoggingIn()
@@ -37,7 +45,7 @@ class AuditHookTest extends \FunctionalTest
         // Simulate an autologin by calling the extension hook directly.
         // Member->autoLogin() relies on session and cookie state which we can't simulate here.
         $this->logInWithPermission('ADMIN');
-        $member = \Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
+        $member = Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
         $member->extend('memberAutoLoggedIn');
 
         $message = $this->writer->getLastMessage();
@@ -49,8 +57,8 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $member = \Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
-        $member->logOut();
+        $member = Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
+        $this->logOut();
 
         $message = $this->writer->getLastMessage();
         $this->assertContains('ADMIN@example.org', $message);
@@ -59,9 +67,9 @@ class AuditHookTest extends \FunctionalTest
 
     public function testLoggingWriteDoesNotOccurWhenNotLoggedIn()
     {
-        $this->session()->inst_set('loggedInAs', null);
+        $this->logOut();
 
-        $group = new \Group(array('Title' => 'My group'));
+        $group = new Group(array('Title' => 'My group'));
         $group->write();
 
         $message = $this->writer->getLastMessage();
@@ -72,23 +80,23 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $group = new \Group(array('Title' => 'My group'));
+        $group = new Group(array('Title' => 'My group'));
         $group->write();
 
         $message = $this->writer->getLastMessage();
         $this->assertContains('ADMIN@example.org', $message);
         $this->assertContains('modified', $message);
-        $this->assertContains('Group', $message);
+        $this->assertContains(Group::class, $message);
     }
 
     public function testAddMemberToGroupUsingGroupMembersRelation()
     {
         $this->logInWithPermission('ADMIN');
 
-        $group = new \Group(array('Title' => 'My group'));
+        $group = new Group(array('Title' => 'My group'));
         $group->write();
 
-        $member = new \Member(array('FirstName' => 'Joe', 'Email' => 'joe1'));
+        $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe1'));
         $member->write();
 
         $group->Members()->add($member);
@@ -103,10 +111,10 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $group = new \Group(array('Title' => 'My group'));
+        $group = new Group(array('Title' => 'My group'));
         $group->write();
 
-        $member = new \Member(array('FirstName' => 'Joe', 'Email' => 'joe2'));
+        $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe2'));
         $member->write();
 
         $member->Groups()->add($group);
@@ -121,10 +129,10 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $group = new \Group(array('Title' => 'My group'));
+        $group = new Group(array('Title' => 'My group'));
         $group->write();
 
-        $member = new \Member(array('FirstName' => 'Joe', 'Email' => 'joe3'));
+        $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe3'));
         $member->write();
 
         $group->Members()->add($member);
@@ -140,10 +148,10 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $group = new \Group(array('Title' => 'My group'));
+        $group = new Group(array('Title' => 'My group'));
         $group->write();
 
-        $member = new \Member(array('FirstName' => 'Joe', 'Email' => 'joe4'));
+        $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe4'));
         $member->write();
 
         $member->Groups()->add($group);
@@ -159,10 +167,11 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new \Page();
+        $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
-        $page->doPublish();
+        $page->write();
+        $page->publishSingle();
 
         $message = $this->writer->getLastMessage();
         $this->assertContains('ADMIN@example.org', $message);
@@ -174,10 +183,11 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new \Page();
+        $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
-        $page->doPublish();
+        $page->write();
+        $page->publishSingle();
         $page->doUnpublish();
 
         $message = $this->writer->getLastMessage();
@@ -190,7 +200,7 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new \Page();
+        $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
         $page->write();
@@ -206,10 +216,11 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new \Page();
+        $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
-        $page->doPublish();
+        $page->write();
+        $page->publishSingle();
 
         $page->Content = 'Changed';
         $page->write();
@@ -225,10 +236,11 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new \Page();
+        $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
-        $page->doPublish();
+        $page->write();
+        $page->publishSingle();
 
         $page->delete();
 
@@ -242,46 +254,20 @@ class AuditHookTest extends \FunctionalTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $page = new \Page();
+        $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'Published';
-        $page->doPublish();
+        $page->write();
+        $page->publishSingle();
 
         $page->Content = 'This is my page content';
-        $page->doPublish();
+        $page->write();
+        $page->publishSingle();
         $page->delete();
 
         $message = $this->writer->getLastMessage();
         $this->assertContains('ADMIN@example.org', $message);
         $this->assertContains('deleted Page', $message);
         $this->assertContains('My page', $message);
-    }
-
-    public function tearDown()
-    {
-        parent::tearDown();
-
-        \SS_Log::remove_writer($this->writer);
-        unset($this->writer);
-    }
-}
-
-class AuditLoggerTest_Logger extends \Psr\Log\AbstractLogger
-{
-    protected $messages = array();
-
-	public function log($level, $message, array $context = array())
-    {
-        array_push($this->messages, $message);
-	}
-
-    public function getLastMessage()
-    {
-        return end($this->messages);
-    }
-
-    public function getMessages()
-    {
-        return $this->messages;
     }
 }

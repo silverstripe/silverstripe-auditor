@@ -146,7 +146,7 @@ class AuditHook extends SiteTreeExtension
             }
 
             // log PermissionRole being added to a Group
-            if ($table === 'Group_Roles') {
+            if ($table === $schema->tableName(Group::class) . '_Roles') {
                 $role = PermissionRole::get()->byId($details['fields']['PermissionRoleID']);
                 $group = Group::get()->byId($details['fields']['GroupID']);
 
@@ -169,7 +169,7 @@ class AuditHook extends SiteTreeExtension
             }
 
             // log Member added to a Group
-            if ($table === 'Group_Members') {
+            if ($table === $schema->tableName(Group::class) . '_Members') {
                 $member = Member::get()->byId($details['fields']['MemberID']);
                 $group = Group::get()->byId($details['fields']['GroupID']);
 

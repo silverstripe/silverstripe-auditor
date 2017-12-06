@@ -6,6 +6,7 @@ use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Security\Group;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Member_GroupSet;
+use SilverStripe\Security\Security;
 
 class AuditHookMemberGroupSet extends Member_GroupSet
 {
@@ -17,9 +18,9 @@ class AuditHookMemberGroupSet extends Member_GroupSet
     {
         parent::removeByID($itemID);
 
-        if ($this->getJoinTable() == 'Group_Members') {
-            $currentMember = Member::currentUser();
-            if (!($currentMember && $currentMember->exists())) {
+        if ($this->getJoinTable() === 'Group_Members') {
+            $currentMember = Security::getCurrentUser();
+            if (!$currentMember || !$currentMember->exists()) {
                 return;
             }
 

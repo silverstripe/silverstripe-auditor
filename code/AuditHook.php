@@ -5,6 +5,9 @@ namespace SilverStripe\Auditor;
 use SilverStripe\CMS\Model\SiteTreeExtension;
 use SilverStripe\Control\Email\Email;
 use SilverStripe\Core\Injector\Injector;
+use SilverStripe\ORM\Connect\Database;
+use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\DataObjectSchema;
 use SilverStripe\ORM\DB;
 use SilverStripe\Security\Group;
 use SilverStripe\Security\Member;
@@ -33,23 +36,24 @@ class AuditHook extends SiteTreeExtension
      */
     public static function bind_manipulation_capture()
     {
-        global $databaseConfig;
-
-        $current = DB::getConn();
-        if (!$current || !$current->currentDatabase() || @$current->isManipulationLoggingCapture) {
+        $current = DB::get_conn();
+        if (!$current || !$current->getConnector()->getSelectedDatabase() || @$current->isManipulationLoggingCapture) {
             return;
         } // If not yet set, or its already captured, just return
 
         $type = get_class($current);
-        $file = TEMP_FOLDER."/.cache.CLC.$type";
-        $dbClass = 'AuditLoggerManipulateCapture_'.$type;
+        $sanitisedType = str_replace('\\', '_', $type);
+        $file = TEMP_FOLDER . "/.cache.CLC.$sanitisedType";
+        $dbClass = 'AuditLoggerManipulateCapture_' . $sanitisedType;
 
         if (!is_file($file)) {
             file_put_contents($file, "<?php
-				class $dbClass extends $type {
+				class $dbClass extends $type
+                {
 					public \$isManipulationLoggingCapture = true;
 
-					public function manipulate(\$manipulation) {
+					public function manipulate(\$manipulation)
+                    {
 						\SilverStripe\Auditor\AuditHook::handle_manipulation(\$manipulation);
 						return parent::manipulate(\$manipulation);
 					}
@@ -59,30 +63,37 @@ class AuditHook extends SiteTreeExtension
 
         require_once $file;
 
-        /** @var SS_Database $captured */
-        $captured = new $dbClass($databaseConfig);
+        /** @var Database $captured */
+        $captured = new $dbClass();
 
-        // Framework 3.2+ ORM needs some dependencies set
-        if (method_exists($captured, 'setConnector')) {
-            $captured->setConnector($current->getConnector());
-            $captured->setQueryBuilder($current->getQueryBuilder());
-            $captured->setSchemaManager($current->getSchemaManager());
-        }
+        $captured->setConnector($current->getConnector());
+        $captured->setQueryBuilder($current->getQueryBuilder());
+        $captured->setSchemaManager($current->getSchemaManager());
 
         // The connection might have had it's name changed (like if we're currently in a test)
-        $captured->selectDatabase($current->currentDatabase());
+        $captured->selectDatabase($current->getConnector()->getSelectedDatabase());
 
-        DB::setConn($captured);
+        DB::set_conn($captured);
     }
 
     public static function handle_manipulation($manipulation)
     {
         $auditLogger = Injector::inst()->get('AuditLogger');
 
-        $currentMember = Member::currentUser();
+        $currentMember = Security::getCurrentUser();
         if (!($currentMember && $currentMember->exists())) {
             return false;
         }
+
+        /** @var DataObjectSchema $schema */
+        $schema = DataObject::getSchema();
+
+        // The tables that we watch for manipulation on
+        $watchedTables = [
+            $schema->tableName(Member::class),
+            $schema->tableName(Group::class),
+            $schema->tableName(PermissionRole::class),
+        ];
 
         foreach ($manipulation as $table => $details) {
             if (!in_array($details['command'], array('update', 'insert'))) {
@@ -90,28 +101,32 @@ class AuditHook extends SiteTreeExtension
             }
 
             // logging writes to specific tables (just not when logging in, as it's noise)
-            if (in_array($table, array(Member::class, Group::class, PermissionRole::class)) && !preg_match('/Security/', @$_SERVER['REQUEST_URI'])) {
-                $data = $table::get()->byId($details['id']);
+            if (in_array($table, $watchedTables)
+                && !preg_match('/Security/', @$_SERVER['REQUEST_URI'])
+            ) {
+                $className = $schema->tableClass($table);
+
+                $data = $className::get()->byId($details['id']);
                 if (!$data) {
                     continue;
                 }
                 $actionText = 'modified '.$table;
 
                 $extendedText = '';
-                if ($table == Group::class) {
+                if ($table === $schema->tableName(Group::class)) {
                     $extendedText = sprintf(
                         'Effective permissions: %s',
                         implode(array_values($data->Permissions()->map('ID', 'Code')->toArray()), ', ')
                     );
                 }
-                if ($table == PermissionRole::class) {
+                if ($table === $schema->tableName(PermissionRole::class)) {
                     $extendedText = sprintf(
                         'Effective groups: %s, Effective permissions: %s',
                         implode(array_values($data->Groups()->map('ID', 'Title')->toArray()), ', '),
                         implode(array_values($data->Codes()->map('ID', 'Code')->toArray()), ', ')
                     );
                 }
-                if ($table == Member::class) {
+                if ($table === $schema->tableName(Member::class)) {
                     $extendedText = sprintf(
                         'Effective groups: %s',
                         implode(array_values($data->Groups()->map('ID', 'Title')->toArray()), ', ')
@@ -131,7 +146,7 @@ class AuditHook extends SiteTreeExtension
             }
 
             // log PermissionRole being added to a Group
-            if ($table == 'Group_Roles') {
+            if ($table === 'Group_Roles') {
                 $role = PermissionRole::get()->byId($details['fields']['PermissionRoleID']);
                 $group = Group::get()->byId($details['fields']['GroupID']);
 
@@ -154,7 +169,7 @@ class AuditHook extends SiteTreeExtension
             }
 
             // log Member added to a Group
-            if ($table == 'Group_Members') {
+            if ($table === 'Group_Members') {
                 $member = Member::get()->byId($details['fields']['MemberID']);
                 $group = Group::get()->byId($details['fields']['GroupID']);
 
@@ -183,33 +198,37 @@ class AuditHook extends SiteTreeExtension
      */
     public function onAfterPublish(&$original)
     {
-        $member = Member::currentUser();
-        if (!($member && $member->exists())) {
+        $member = Security::getcurrentUser();
+        if (!$member || !$member->exists()) {
             return false;
         }
 
         $effectiveViewerGroups = '';
-        if ($this->owner->CanViewType == 'OnlyTheseUsers') {
-            $effectiveViewerGroups = implode(array_values($original->ViewerGroups()->map('ID', 'Title')->toArray()), ', ');
+        if ($this->owner->CanViewType === 'OnlyTheseUsers') {
+            $effectiveViewerGroups = implode(
+                ', ',
+                array_values($original->ViewerGroups()->map('ID', 'Title')->toArray())
+            );
         }
         if (!$effectiveViewerGroups) {
             $effectiveViewerGroups = $this->owner->CanViewType;
         }
 
         $effectiveEditorGroups = '';
-        if ($this->owner->CanEditType == 'OnlyTheseUsers' && $original->EditorGroups()->exists()) {
-            $groups = array();
+        if ($this->owner->CanEditType === 'OnlyTheseUsers' && $original->EditorGroups()->exists()) {
+            $groups = [];
             foreach ($original->EditorGroups() as $group) {
                 $groups[$group->ID] = $group->Title;
             }
-            $effectiveEditorGroups = implode(array_values($groups), ', ');
+            $effectiveEditorGroups = implode(', ', array_values($groups));
         }
         if (!$effectiveEditorGroups) {
             $effectiveEditorGroups = $this->owner->CanEditType;
         }
 
         $this->getAuditLogger()->info(sprintf(
-            '"%s" (ID: %s) published %s "%s" (ID: %s, Version: %s, ClassName: %s, Effective ViewerGroups: %s, Effective EditorGroups: %s)',
+            '"%s" (ID: %s) published %s "%s" (ID: %s, Version: %s, ClassName: %s, Effective ViewerGroups: %s, '
+            . 'Effective EditorGroups: %s)',
             $member->Email ?: $member->Title,
             $member->ID,
             $this->owner->singular_name(),
@@ -227,8 +246,8 @@ class AuditHook extends SiteTreeExtension
      */
     public function onAfterUnpublish()
     {
-        $member = Member::currentUser();
-        if (!($member && $member->exists())) {
+        $member = Security::getCurrentUser();
+        if (!$member || !$member->exists()) {
             return false;
         }
 
@@ -247,8 +266,8 @@ class AuditHook extends SiteTreeExtension
      */
     public function onAfterRevertToLive()
     {
-        $member = Member::currentUser();
-        if (!($member && $member->exists())) {
+        $member = Security::getCurrentUser();
+        if (!$member || !$member->exists()) {
             return false;
         }
 
@@ -268,8 +287,8 @@ class AuditHook extends SiteTreeExtension
      */
     public function onAfterDuplicate()
     {
-        $member = Member::currentUser();
-        if (!($member && $member->exists())) {
+        $member = Security::getCurrentUser();
+        if (!$member || !$member->exists()) {
             return false;
         }
 
@@ -288,8 +307,8 @@ class AuditHook extends SiteTreeExtension
      */
     public function onAfterDelete()
     {
-        $member = Member::currentUser();
-        if (!($member && $member->exists())) {
+        $member = Security::getCurrentUser();
+        if (!$member || !$member->exists()) {
             return false;
         }
 
@@ -308,8 +327,8 @@ class AuditHook extends SiteTreeExtension
      */
     public function onAfterRestoreToStage()
     {
-        $member = Member::currentUser();
-        if (!($member && $member->exists())) {
+        $member = Security::getCurrentUser();
+        if (!$member || !$member->exists()) {
             return false;
         }
 
@@ -326,7 +345,7 @@ class AuditHook extends SiteTreeExtension
     /**
      * Log successful login attempts.
      */
-    public function memberLoggedIn()
+    public function afterMemberLoggedIn()
     {
         $this->getAuditLogger()->info(sprintf(
             '"%s" (ID: %s) successfully logged in',
@@ -381,8 +400,8 @@ class AuditHook extends SiteTreeExtension
         if (!Security::database_is_ready()) {
             return false;
         }
-        $currentMember = Member::currentUser();
-        if (!($currentMember && $currentMember->exists())) {
+        $currentMember = Security::getCurrentUser();
+        if (!$currentMember || !$currentMember->exists()) {
             return false;
         }
 
@@ -407,7 +426,7 @@ class AuditHook extends SiteTreeExtension
     /**
      * Log successful logout.
      */
-    public function memberLoggedOut()
+    public function afterMemberLoggedOut()
     {
         $this->getAuditLogger()->info(sprintf(
             '"%s" (ID: %s) successfully logged out',

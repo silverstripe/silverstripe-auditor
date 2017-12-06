@@ -58,7 +58,7 @@ class AuditHookTest extends FunctionalTest
         $this->logInWithPermission('ADMIN');
 
         $member = Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
-        $member->logOut();
+        $this->logOut();
 
         $message = $this->writer->getLastMessage();
         $this->assertContains('ADMIN@example.org', $message);
@@ -67,7 +67,7 @@ class AuditHookTest extends FunctionalTest
 
     public function testLoggingWriteDoesNotOccurWhenNotLoggedIn()
     {
-        $this->session()->inst_set('loggedInAs', null);
+        $this->logOut();
 
         $group = new Group(array('Title' => 'My group'));
         $group->write();
@@ -170,7 +170,8 @@ class AuditHookTest extends FunctionalTest
         $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
-        $page->doPublish();
+        $page->write();
+        $page->publishSingle();
 
         $message = $this->writer->getLastMessage();
         $this->assertContains('ADMIN@example.org', $message);
@@ -185,7 +186,8 @@ class AuditHookTest extends FunctionalTest
         $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
-        $page->doPublish();
+        $page->write();
+        $page->publishSingle();
         $page->doUnpublish();
 
         $message = $this->writer->getLastMessage();
@@ -217,7 +219,8 @@ class AuditHookTest extends FunctionalTest
         $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
-        $page->doPublish();
+        $page->write();
+        $page->publishSingle();
 
         $page->Content = 'Changed';
         $page->write();
@@ -236,7 +239,8 @@ class AuditHookTest extends FunctionalTest
         $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'This is my page content';
-        $page->doPublish();
+        $page->write();
+        $page->publishSingle();
 
         $page->delete();
 
@@ -253,10 +257,12 @@ class AuditHookTest extends FunctionalTest
         $page = new Page();
         $page->Title = 'My page';
         $page->Content = 'Published';
-        $page->doPublish();
+        $page->write();
+        $page->publishSingle();
 
         $page->Content = 'This is my page content';
-        $page->doPublish();
+        $page->write();
+        $page->publishSingle();
         $page->delete();
 
         $message = $this->writer->getLastMessage();

@@ -15,7 +15,7 @@ class Logger extends AbstractLogger
 
     public function getLastMessage()
     {
-        return end($this->messages);
+        return (string) end($this->messages);
     }
 
     public function getMessages()

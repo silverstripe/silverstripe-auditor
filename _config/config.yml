@@ -10,10 +10,6 @@ SilverStripe\Core\Injector\Injector:
   SilverStripe\Security\Member_GroupSet:
     class: SilverStripe\Auditor\AuditHookMemberGroupSet
 
-SilverStripe\Security\MemberAuthenticator\MemberLoginForm:
-  extensions:
-    - SilverStripe\Auditor\AuditHook
-
 SilverStripe\Control\Controller:
   extensions:
     - SilverStripe\Auditor\AuditHook

@@ -18,6 +18,11 @@ SilverStripe\Security\Member:
   extensions:
     - SilverStripe\Auditor\AuditHook
 
+---
+Name: auditorcms
+Only:
+  moduleexists: silverstripe/cms
+---
 SilverStripe\CMS\Model\SiteTree:
   extensions:
     - SilverStripe\Auditor\AuditHook

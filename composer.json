@@ -5,7 +5,7 @@
     "keywords": ["silverstripe", "audit"],
     "license": "BSD-3-Clause",
     "require": {
-        "silverstripe/cms": "^4.0",
+        "silverstripe/framework": "^4.0",
         "monolog/monolog": "~1.11",
         "psr/log": "~1.0"
     },

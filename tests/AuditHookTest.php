@@ -165,6 +165,10 @@ class AuditHookTest extends FunctionalTest
 
     public function testPublishPage()
     {
+        if (!class_exists(Page::class)) {
+            $this->markTestSkipped('This test requires the CMS module installed.');
+        }
+
         $this->logInWithPermission('ADMIN');
 
         $page = new Page();
@@ -181,6 +185,10 @@ class AuditHookTest extends FunctionalTest
 
     public function testUnpublishPage()
     {
+        if (!class_exists(Page::class)) {
+            $this->markTestSkipped('This test requires the CMS module installed.');
+        }
+
         $this->logInWithPermission('ADMIN');
 
         $page = new Page();
@@ -198,6 +206,10 @@ class AuditHookTest extends FunctionalTest
 
     public function testDuplicatePage()
     {
+        if (!class_exists(Page::class)) {
+            $this->markTestSkipped('This test requires the CMS module installed.');
+        }
+
         $this->logInWithPermission('ADMIN');
 
         $page = new Page();
@@ -214,6 +226,10 @@ class AuditHookTest extends FunctionalTest
 
     public function testRevertToLive()
     {
+        if (!class_exists(Page::class)) {
+            $this->markTestSkipped('This test requires the CMS module installed.');
+        }
+
         $this->logInWithPermission('ADMIN');
 
         $page = new Page();
@@ -234,6 +250,10 @@ class AuditHookTest extends FunctionalTest
 
     public function testDelete()
     {
+        if (!class_exists(Page::class)) {
+            $this->markTestSkipped('This test requires the CMS module installed.');
+        }
+
         $this->logInWithPermission('ADMIN');
 
         $page = new Page();
@@ -252,6 +272,10 @@ class AuditHookTest extends FunctionalTest
 
     public function testRestoreToStage()
     {
+        if (!class_exists(Page::class)) {
+            $this->markTestSkipped('This test requires the CMS module installed.');
+        }
+
         $this->logInWithPermission('ADMIN');
 
         $page = new Page();

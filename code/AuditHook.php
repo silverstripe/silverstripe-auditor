@@ -33,6 +33,8 @@ class AuditHook extends DataExtension
      * This will bind a new class dynamically so we can hook into manipulation
      * and capture it. It creates a new PHP file in the temp folder, then
      * loads it and sets it as the active DB class.
+     *
+     * @deprecated 2.1...3.0 Please use ProxyDBExtension with the tractorcow/silverstripe-proxy-db module instead
      */
     public static function bind_manipulation_capture()
     {
@@ -386,9 +388,12 @@ class AuditHook extends DataExtension
         $this->getAuditLogger()->info(sprintf('Failed login attempt using email "%s"', $login));
     }
 
+    /**
+     * @deprecated 2.1...3.0 Use tractorcow/silverstripe-proxy-db instead
+     */
     public function onBeforeInit()
     {
-        self::bind_manipulation_capture();
+        // no-op
     }
 
     /**

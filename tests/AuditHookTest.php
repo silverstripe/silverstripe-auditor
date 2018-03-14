@@ -25,10 +25,6 @@ class AuditHookTest extends FunctionalTest
         // Phase singleton out, so the message log is purged.
         Injector::inst()->unregisterNamedObject('AuditLogger');
         Injector::inst()->registerService($this->writer, 'AuditLogger');
-
-        // ensure the manipulations are being captured, normally called in {@link AuditLogger::onBeforeInit()}
-        // but tests will reset this during setting up, so we need to set it back again.
-        AuditHook::bind_manipulation_capture();
     }
 
     public function testLoggingIn()

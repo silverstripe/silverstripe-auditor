@@ -179,7 +179,7 @@ class AuditHookTest extends FunctionalTest
 
         $message = $this->writer->getLastMessage();
         $this->assertContains('Effective ViewerGroups', $message);
-        $this->assertContains('Test group', $message);
+        $this->assertContains('OnlyTheseUsers', $message);
     }
 
     public function testPublishPage()

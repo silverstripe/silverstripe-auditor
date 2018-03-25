@@ -205,8 +205,12 @@ class AuditHook extends DataExtension
             return false;
         }
 
+        // If there is no $original, this means the owner has not been published before.
+        // ChangeSetItem::publish will call Versioned::publishSingle
+        // which in turn checks the *_Live table, or sets $original to `null`.
+
         $effectiveViewerGroups = '';
-        if ($this->owner->CanViewType === 'OnlyTheseUsers') {
+        if ($original && $this->owner->CanViewType === 'OnlyTheseUsers') {
             $effectiveViewerGroups = implode(
                 ', ',
                 array_values($original->ViewerGroups()->map('ID', 'Title')->toArray())
@@ -217,7 +221,11 @@ class AuditHook extends DataExtension
         }
 
         $effectiveEditorGroups = '';
-        if ($this->owner->CanEditType === 'OnlyTheseUsers' && $original->EditorGroups()->exists()) {
+        if (
+            $original &&
+            $this->owner->CanEditType === 'OnlyTheseUsers' &&
+            $original->EditorGroups()->exists()
+        ) {
             $groups = [];
             foreach ($original->EditorGroups() as $group) {
                 $groups[$group->ID] = $group->Title;

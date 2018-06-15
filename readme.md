@@ -3,6 +3,7 @@
 [![Build Status](https://travis-ci.org/silverstripe/silverstripe-auditor.svg?branch=master)](https://travis-ci.org/silverstripe/silverstripe-auditor)
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/silverstripe/silverstripe-auditor/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/silverstripe/silverstripe-auditor/?branch=master)
 [![codecov](https://codecov.io/gh/silverstripe/silverstripe-auditor/branch/master/graph/badge.svg)](https://codecov.io/gh/silverstripe/silverstripe-auditor)
+[![SilverStripe supported module](https://img.shields.io/badge/silverstripe-supported-0071C4.svg)](https://www.silverstripe.org/software/addons/silverstripe-commercially-supported-module-list/)
 
 Auditor module installs a series of extension hooks into the Framework to monitor activity of authenticated users. Audit
 trail is written into `LOG_AUTH` syslog facility through [Monolog](https://github.com/Seldaek/monolog/), and includes:

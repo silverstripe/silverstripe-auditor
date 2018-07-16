@@ -116,20 +116,20 @@ class AuditHook extends DataExtension
                 if ($table === $schema->tableName(Group::class)) {
                     $extendedText = sprintf(
                         'Effective permissions: %s',
-                        implode(array_values($data->Permissions()->map('ID', 'Code')->toArray()), ', ')
+                        implode($data->Permissions()->column('Code'), ', ')
                     );
                 }
                 if ($table === $schema->tableName(PermissionRole::class)) {
                     $extendedText = sprintf(
                         'Effective groups: %s, Effective permissions: %s',
-                        implode(array_values($data->Groups()->map('ID', 'Title')->toArray()), ', '),
-                        implode(array_values($data->Codes()->map('ID', 'Code')->toArray()), ', ')
+                        implode($data->Groups()->column('Title'), ', '),
+                        implode($data->Codes()->column('Code'), ', ')
                     );
                 }
                 if ($table === $schema->tableName(Member::class)) {
                     $extendedText = sprintf(
                         'Effective groups: %s',
-                        implode(array_values($data->Groups()->map('ID', 'Title')->toArray()), ', ')
+                        implode($data->Groups()->column('Title'), ', ')
                     );
                 }
 
@@ -205,10 +205,7 @@ class AuditHook extends DataExtension
 
         $effectiveViewerGroups = '';
         if ($this->owner->CanViewType === 'OnlyTheseUsers') {
-            $effectiveViewerGroups = implode(
-                ', ',
-                array_values($original->ViewerGroups()->map('ID', 'Title')->toArray())
-            );
+            $effectiveViewerGroups = implode($original->ViewerGroups()->column('Title'), ', ');
         }
         if (!$effectiveViewerGroups) {
             $effectiveViewerGroups = $this->owner->CanViewType;

@@ -159,6 +159,29 @@ class AuditHookTest extends FunctionalTest
         $this->assertContains('from Group "My group"', $message);
     }
 
+    public function testAddViewerGroupToPage()
+    {
+        if (!class_exists(Page::class)) {
+            $this->markTestSkipped('This test requires the CMS module installed.');
+        }
+
+        $this->logInWithPermission('ADMIN');
+
+        $group = new Group();
+        $group->Title = 'Test group';
+        $group->write();
+
+        $page = new Page();
+        $page->CanViewType = 'OnlyTheseUsers';
+        $page->ViewerGroups()->add($group);
+        $page->write();
+        $page->publishSingle();
+
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('Effective ViewerGroups', $message);
+        $this->assertContains('OnlyTheseUsers', $message);
+    }
+
     public function testPublishPage()
     {
         if (!class_exists(Page::class)) {

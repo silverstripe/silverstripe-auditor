@@ -118,20 +118,20 @@ class AuditHook extends DataExtension
                 if ($table === $schema->tableName(Group::class)) {
                     $extendedText = sprintf(
                         'Effective permissions: %s',
-                        implode(array_values($data->Permissions()->map('ID', 'Code')->toArray()), ', ')
+                        implode($data->Permissions()->column('Code'), ', ')
                     );
                 }
                 if ($table === $schema->tableName(PermissionRole::class)) {
                     $extendedText = sprintf(
                         'Effective groups: %s, Effective permissions: %s',
-                        implode(array_values($data->Groups()->map('ID', 'Title')->toArray()), ', '),
-                        implode(array_values($data->Codes()->map('ID', 'Code')->toArray()), ', ')
+                        implode($data->Groups()->column('Title'), ', '),
+                        implode($data->Codes()->column('Code'), ', ')
                     );
                 }
                 if ($table === $schema->tableName(Member::class)) {
                     $extendedText = sprintf(
                         'Effective groups: %s',
-                        implode(array_values($data->Groups()->map('ID', 'Title')->toArray()), ', ')
+                        implode($data->Groups()->column('Title'), ', ')
                     );
                 }
 
@@ -200,29 +200,24 @@ class AuditHook extends DataExtension
      */
     public function onAfterPublish(&$original)
     {
-        $member = Security::getcurrentUser();
+        $member = Security::getCurrentUser();
         if (!$member || !$member->exists()) {
             return false;
         }
 
         $effectiveViewerGroups = '';
         if ($this->owner->CanViewType === 'OnlyTheseUsers') {
-            $effectiveViewerGroups = implode(
-                ', ',
-                array_values($original->ViewerGroups()->map('ID', 'Title')->toArray())
-            );
+            $originalViewerGroups = $original ? $original->ViewerGroups()->column('Title') : [];
+            $effectiveViewerGroups = implode(', ', $originalViewerGroups);
         }
         if (!$effectiveViewerGroups) {
             $effectiveViewerGroups = $this->owner->CanViewType;
         }
 
         $effectiveEditorGroups = '';
-        if ($this->owner->CanEditType === 'OnlyTheseUsers' && $original->EditorGroups()->exists()) {
-            $groups = [];
-            foreach ($original->EditorGroups() as $group) {
-                $groups[$group->ID] = $group->Title;
-            }
-            $effectiveEditorGroups = implode(', ', array_values($groups));
+        if ($this->owner->CanEditType === 'OnlyTheseUsers') {
+            $originalEditorGroups =  $original ? $original->EditorGroups()->column('Title') : [];
+            $effectiveEditorGroups = implode(', ', $originalEditorGroups);
         }
         if (!$effectiveEditorGroups) {
             $effectiveEditorGroups = $this->owner->CanEditType;

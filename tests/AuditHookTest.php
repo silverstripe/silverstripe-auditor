@@ -3,17 +3,21 @@
 namespace SilverStripe\Auditor\Tests;
 
 use Page;
-use Silverstripe\Auditor\AuditHook;
 use SilverStripe\Auditor\Tests\AuditHookTest\Logger;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\FunctionalTest;
 use SilverStripe\Security\Group;
 use SilverStripe\Security\Member;
+use SilverStripe\Security\PermissionRole;
+use SilverStripe\Security\PermissionRoleCode;
 
 class AuditHookTest extends FunctionalTest
 {
     protected $usesDatabase = true;
 
+    /**
+     * @var Logger
+     */
     protected $writer = null;
 
     protected function setUp()
@@ -157,6 +161,22 @@ class AuditHookTest extends FunctionalTest
         $this->assertContains('ADMIN@example.org', $message);
         $this->assertContains('removed Member "joe4"', $message);
         $this->assertContains('from Group "My group"', $message);
+    }
+
+    public function testAddRoleCodeToRole()
+    {
+        $this->logInWithPermission('ADMIN');
+
+        $roleCode = new PermissionRoleCode(['Code' => 'grand_ruler']);
+        $roleCode->write();
+
+        $permissionRole = new PermissionRole(['Title' => 'Grand Ruler']);
+        $permissionRole->Codes()->add($roleCode);
+        $permissionRole->write();
+
+        $message = $this->writer->getLastMessage();
+        $this->assertContains('Effective code', $message);
+        $this->assertContains('grand_ruler', $message);
     }
 
     public function testAddViewerGroupToPage()

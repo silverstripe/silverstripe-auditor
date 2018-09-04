@@ -12,6 +12,7 @@ use SilverStripe\ORM\DB;
 use SilverStripe\Security\Group;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\PermissionRole;
+use SilverStripe\Security\PermissionRoleCode;
 use SilverStripe\Security\Security;
 
 /**
@@ -95,6 +96,7 @@ class AuditHook extends DataExtension
             $schema->tableName(Member::class),
             $schema->tableName(Group::class),
             $schema->tableName(PermissionRole::class),
+            $schema->tableName(PermissionRoleCode::class),
         ];
 
         foreach ($manipulation as $table => $details) {
@@ -126,6 +128,12 @@ class AuditHook extends DataExtension
                         'Effective groups: %s, Effective permissions: %s',
                         implode($data->Groups()->column('Title'), ', '),
                         implode($data->Codes()->column('Code'), ', ')
+                    );
+                }
+                if ($table === $schema->tableName(PermissionRoleCode::class)) {
+                    $extendedText = sprintf(
+                        'Effective code: %s',
+                        $data->Code
                     );
                 }
                 if ($table === $schema->tableName(Member::class)) {

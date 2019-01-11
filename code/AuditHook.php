@@ -392,6 +392,101 @@ class AuditHook extends DataExtension
     }
 
     /**
+     * Login during grace period
+     * @param Member $member
+     */
+    public function gracePeriodLogin($member)
+    {
+        $this->getAuditLogger()->info(sprintf(
+            '%s (ID: %s) Successfully logged in while in grace period',
+            $member->Email ?: $member->Title,
+            $member->ID
+        ));
+    }
+
+    /**
+     * Successful pre-MFA authentication
+     * @param Member $member
+     */
+    public function mfaPreLoginSuccess($member)
+    {
+        $this->getAuditLogger()->info(sprintf(
+            '%s (ID: %s) Successfully completed first step of MFA login',
+            $member->Email ?: $member->Title,
+            $member->ID
+        ));
+    }
+
+    /**
+     * Member session expired
+     */
+    public function staleSession()
+    {
+        $this->getAuditLogger()->info('Member waited too long before entering MFA');
+    }
+
+    /**
+     * @param string $method
+     * @param Member $member
+     */
+    public function invalidAuthenticationMethod($method, $member)
+    {
+        $this->getAuditLogger()->warning(sprintf(
+            '%s (ID: %s) Attempted to log in with invalid authenticator %s',
+            $member->Email ?: $member->Title,
+            $member->ID,
+            $method
+        ));
+    }
+
+    /**
+     * @param string $method
+     * @param Member $member
+     */
+    public function afterMFALogin($method, $member)
+    {
+        $this->getAuditLogger()->info(sprintf(
+            '%s (ID: %s) Successful log in with MFA authenticator %s',
+            $member->Email ?: $member->Title,
+            $member->ID,
+            $method
+        ));
+    }
+
+    /**
+     * @param string $method
+     * @param Member $member
+     */
+    public function failedMFALogin($method, $member)
+    {
+        $this->getAuditLogger()->warning(sprintf(
+            '%s (ID: %s) Failed to log in with MFA authenticator %s',
+            $member->Email ?: $member->Title,
+            $member->ID,
+            $method
+        ));
+    }
+
+    /**
+     * @param string $method
+     */
+    public function invalidToken($method)
+    {
+        $this->getAuditLogger()->warning(sprintf(
+            'Security token expired for MFA login with authenticator %s',
+            $method
+        ));
+    }
+
+    public function invalidAuthenticator($method)
+    {
+        $this->getAuditLogger()->warning(sprintf(
+            'Attempted MFA login with invalid authenticator %s',
+            $method
+        ));
+    }
+
+    /**
      * @deprecated 2.1...3.0 Use tractorcow/silverstripe-proxy-db instead
      */
     public function onBeforeInit()

@@ -100,17 +100,18 @@ class AuditHook extends DataExtension
         ];
 
         foreach ($manipulation as $table => $details) {
-            if (!in_array($details['command'], array('update', 'insert'))) {
+            if (!in_array($details['command'], ['update', 'insert'])) {
                 continue;
             }
 
             // logging writes to specific tables (just not when logging in, as it's noise)
             if (in_array($table, $watchedTables)
                 && !preg_match('/Security/', @$_SERVER['REQUEST_URI'])
+                && isset($details['id'])
             ) {
                 $className = $schema->tableClass($table);
 
-                $data = $className::get()->byId($details['id']);
+                $data = $className::get()->byID($details['id']);
                 if (!$data) {
                     continue;
                 }

@@ -1,0 +1,5 @@
+SilverStripe\Security\Member:
+  leslie_lawless:
+    FirstName: Leslie
+    Surname: Lawless
+    Email: leslie@example.com

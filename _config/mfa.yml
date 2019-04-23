@@ -1,0 +1,12 @@
+---
+Name: auditormfa
+Only:
+  moduleexists: silverstripe/mfa
+---
+SilverStripe\MFA\Authenticator\LoginHandler:
+  extensions:
+    - SilverStripe\Auditor\AuditHookMFA
+
+SilverStripe\MFA\Service\RegisteredMethodManager:
+  extensions:
+    - SilverStripe\Auditor\AuditHookMFA

@@ -11,7 +11,7 @@ class Logger extends AbstractLogger implements TestOnly
 
     public function log($level, $message, array $context = [])
     {
-        array_push($this->messages, $message);
+        $this->messages[] = $message . ' ' . json_encode($context);
     }
 
     public function getLastMessage()

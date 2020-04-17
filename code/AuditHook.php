@@ -121,14 +121,14 @@ class AuditHook extends DataExtension
                 if ($table === $schema->tableName(Group::class)) {
                     $extendedText = sprintf(
                         'Effective permissions: %s',
-                        implode($data->Permissions()->column('Code'), ', ')
+                        implode(', ', $data->Permissions()->column('Code'))
                     );
                 }
                 if ($table === $schema->tableName(PermissionRole::class)) {
                     $extendedText = sprintf(
                         'Effective groups: %s, Effective permissions: %s',
-                        implode($data->Groups()->column('Title'), ', '),
-                        implode($data->Codes()->column('Code'), ', ')
+                        implode(', ', $data->Groups()->column('Title')),
+                        implode(', ', $data->Codes()->column('Code'))
                     );
                 }
                 if ($table === $schema->tableName(PermissionRoleCode::class)) {
@@ -140,7 +140,7 @@ class AuditHook extends DataExtension
                 if ($table === $schema->tableName(Member::class)) {
                     $extendedText = sprintf(
                         'Effective groups: %s',
-                        implode($data->Groups()->column('Title'), ', ')
+                        implode(', ', $data->Groups()->column('Title'))
                     );
                 }
 

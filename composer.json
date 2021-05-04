@@ -2,7 +2,10 @@
     "name": "silverstripe/auditor",
     "description": "Adds security audit trail to SilverStripe.",
     "type": "silverstripe-vendormodule",
-    "keywords": ["silverstripe", "audit"],
+    "keywords": [
+        "silverstripe",
+        "audit"
+    ],
     "license": "BSD-3-Clause",
     "require": {
         "silverstripe/framework": "^4.0",
@@ -21,11 +24,7 @@
             "SilverStripe\\Auditor\\Tests\\": "tests/"
         }
     },
-    "extra": {
-        "branch-alias": {
-            "dev-master": "2.x-dev"
-        }
-    },
+    "extra": [],
     "minimum-stability": "dev",
     "prefer-stable": true
 }

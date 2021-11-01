@@ -22,7 +22,7 @@ class AuditHookSessionManagerTest extends SapphireTest
      */
     protected $writer = null;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
         if (!class_exists(LoginSessionController::class)) {

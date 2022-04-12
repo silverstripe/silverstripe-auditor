@@ -45,12 +45,12 @@ class AuditHook extends DataExtension
         } // If not yet set, or its already captured, just return
 
         $type = get_class($current);
-        $sanitisedType = str_replace('\\', '_', $type);
+        $sanitisedType = str_replace('\\', '_', $type ?? '');
         $file = TEMP_FOLDER . "/.cache.CLC.$sanitisedType";
         $dbClass = 'AuditLoggerManipulateCapture_' . $sanitisedType;
 
-        if (!is_file($file)) {
-            file_put_contents($file, "<?php
+        if (!is_file($file ?? '')) {
+            file_put_contents($file ?? '', "<?php
 				class $dbClass extends $type
                 {
 					public \$isManipulationLoggingCapture = true;
@@ -105,7 +105,7 @@ class AuditHook extends DataExtension
             }
 
             // logging writes to specific tables (just not when logging in, as it's noise)
-            if (in_array($table, $watchedTables)
+            if (in_array($table, $watchedTables ?? [])
                 && !preg_match('/Security/', @$_SERVER['REQUEST_URI'])
                 && isset($details['id'])
             ) {
@@ -416,7 +416,7 @@ class AuditHook extends DataExtension
 
         $statusCode = $this->owner->getResponse()->getStatusCode();
 
-        if (substr($statusCode, 0, 1) == '4') {
+        if (substr($statusCode ?? '', 0, 1) == '4') {
             $this->logPermissionDenied($statusCode, $currentMember);
         }
     }

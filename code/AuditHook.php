@@ -2,6 +2,7 @@
 
 namespace SilverStripe\Auditor;
 
+use SilverStripe\Dev\Deprecation;
 use SilverStripe\Control\Email\Email;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\Connect\Database;
@@ -35,10 +36,11 @@ class AuditHook extends DataExtension
      * and capture it. It creates a new PHP file in the temp folder, then
      * loads it and sets it as the active DB class.
      *
-     * @deprecated 2.1...3.0 Please use ProxyDBExtension with the tractorcow/silverstripe-proxy-db module instead
+     * @deprecated 2.1.0 Use ProxyDBExtension with the tractorcow/silverstripe-proxy-db module instead
      */
     public static function bind_manipulation_capture()
     {
+        Deprecation::notice('2.1.0', 'Use ProxyDBExtension with the tractorcow/silverstripe-proxy-db module instead');
         $current = DB::get_conn();
         if (!$current || !$current->getConnector()->getSelectedDatabase() || @$current->isManipulationLoggingCapture) {
             return;
@@ -393,10 +395,13 @@ class AuditHook extends DataExtension
     }
 
     /**
-     * @deprecated 2.1...3.0 Use tractorcow/silverstripe-proxy-db instead
+     * @deprecated 2.1.0 Use tractorcow/silverstripe-proxy-db instead
      */
     public function onBeforeInit()
     {
+        Deprecation::withNoReplacement(function () {
+            Deprecation::notice('2.1.0', 'Use tractorcow/silverstripe-proxy-db instead');
+        });
         // no-op
     }
 

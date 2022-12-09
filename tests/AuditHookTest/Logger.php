@@ -9,7 +9,7 @@ class Logger extends AbstractLogger implements TestOnly
 {
     protected $messages = [];
 
-    public function log($level, $message, array $context = [])
+    public function log($level, string|\Stringable $message, array $context = []): void
     {
         $this->messages[] = $message . ' ' . json_encode($context);
     }

@@ -2,10 +2,8 @@
 
 namespace SilverStripe\Auditor;
 
-use SilverStripe\Dev\Deprecation;
 use SilverStripe\Control\Email\Email;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\ORM\Connect\Database;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DataObjectSchema;
@@ -29,56 +27,6 @@ class AuditHook extends DataExtension
         // In other words, Framework does not permit hooking in early enough to adjust the graph when
         // 'dependencies' is used :-(
         return Injector::inst()->get('AuditLogger');
-    }
-
-    /**
-     * This will bind a new class dynamically so we can hook into manipulation
-     * and capture it. It creates a new PHP file in the temp folder, then
-     * loads it and sets it as the active DB class.
-     *
-     * @deprecated 2.1.0 Use ProxyDBExtension with the tractorcow/silverstripe-proxy-db module instead
-     */
-    public static function bind_manipulation_capture()
-    {
-        Deprecation::notice('2.1.0', 'Use ProxyDBExtension with the tractorcow/silverstripe-proxy-db module instead');
-        $current = DB::get_conn();
-        if (!$current || !$current->getConnector()->getSelectedDatabase() || @$current->isManipulationLoggingCapture) {
-            return;
-        } // If not yet set, or its already captured, just return
-
-        $type = get_class($current);
-        $sanitisedType = str_replace('\\', '_', $type ?? '');
-        $file = TEMP_FOLDER . "/.cache.CLC.$sanitisedType";
-        $dbClass = 'AuditLoggerManipulateCapture_' . $sanitisedType;
-
-        if (!is_file($file ?? '')) {
-            file_put_contents($file ?? '', "<?php
-				class $dbClass extends $type
-                {
-					public \$isManipulationLoggingCapture = true;
-
-					public function manipulate(\$manipulation)
-                    {
-						\SilverStripe\Auditor\AuditHook::handle_manipulation(\$manipulation);
-						return parent::manipulate(\$manipulation);
-					}
-				}
-			");
-        }
-
-        require_once $file;
-
-        /** @var Database $captured */
-        $captured = new $dbClass();
-
-        $captured->setConnector($current->getConnector());
-        $captured->setQueryBuilder($current->getQueryBuilder());
-        $captured->setSchemaManager($current->getSchemaManager());
-
-        // The connection might have had it's name changed (like if we're currently in a test)
-        $captured->selectDatabase($current->getConnector()->getSelectedDatabase());
-
-        DB::set_conn($captured);
     }
 
     public static function handle_manipulation($manipulation)
@@ -392,17 +340,6 @@ class AuditHook extends DataExtension
         }
 
         $this->getAuditLogger()->info(sprintf('Failed login attempt using email "%s"', $login));
-    }
-
-    /**
-     * @deprecated 2.1.0 Use tractorcow/silverstripe-proxy-db instead
-     */
-    public function onBeforeInit()
-    {
-        Deprecation::withNoReplacement(function () {
-            Deprecation::notice('2.1.0', 'Use tractorcow/silverstripe-proxy-db instead');
-        });
-        // no-op
     }
 
     /**

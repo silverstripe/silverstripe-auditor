@@ -9,7 +9,7 @@
     "license": "BSD-3-Clause",
     "require": {
         "php": "^7.4 || ^8.0",
-        "silverstripe/framework": "^4.12",
+        "silverstripe/framework": "4.13.x-dev",
         "monolog/monolog": "~1.11",
         "psr/log": "~1.0",
         "tractorcow/silverstripe-proxy-db": "^1"

@@ -11,18 +11,11 @@ trail is written into `LOG_AUTH` syslog facility through [Monolog](https://githu
 * Page manipulations that may potentially affect the live site
 * Security-related changes such as Members being added to groups or permission changes.
 
-## Requirements
-
-* Silverstripe ^4.0
-* Monolog ~1.11
-
 ## Installation
 
 ```sh
-composer require silverstripe/auditor ^2.0
+composer require silverstripe/auditor
 ```
-
-**Please note:** For a Silverstripe 3 compatible, please see [the 1.x release line](https://github.com/silverstripe/silverstripe-auditor/tree/1).
 
 ## Custom audit trail
 

@@ -6,6 +6,7 @@ use Exception;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\SyslogHandler;
 use Monolog\Logger;
+use Monolog\Processor\PsrLogMessageProcessor;
 use Monolog\Processor\WebProcessor;
 use SilverStripe\Core\Injector\Factory;
 
@@ -21,7 +22,6 @@ class AuditFactory implements Factory
             throw new Exception('AuditFactory does not support passing params.');
         }
 
-        $obj = null;
         switch ($service) {
             case 'AuditLogger':
                 $log = new Logger('audit');
@@ -34,6 +34,7 @@ class AuditFactory implements Factory
                 ]));
 
                 $syslog->pushProcessor(new RealIPProcessor());
+                $syslog->pushProcessor(new PsrLogMessageProcessor());
                 $formatter = new LineFormatter("%level_name%: %message% %context% %extra%");
                 $syslog->setFormatter($formatter);
                 $log->pushHandler($syslog);

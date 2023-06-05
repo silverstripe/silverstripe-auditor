@@ -3,7 +3,10 @@
 namespace SilverStripe\Auditor\Tests;
 
 use Page;
-use SilverStripe\Auditor\Tests\AuditHookTest\Logger;
+use Monolog\Logger;
+use Monolog\Handler\TestHandler;
+use Monolog\LogRecord;
+use Monolog\Processor\PsrLogMessageProcessor;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\FunctionalTest;
 use SilverStripe\Security\Group;
@@ -16,26 +19,37 @@ class AuditHookTest extends FunctionalTest
     protected $usesDatabase = true;
 
     /**
-     * @var Logger
+     * @var TestHandler
      */
-    protected $writer = null;
+    protected $handler = null;
+
+    private function lastMessage(): string
+    {
+        $records = $this->handler->getRecords();
+        /** @var LogRecord $lastRecord */
+        $lastRecord = end($records);
+        return $lastRecord->message;
+    }
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->writer = new Logger;
+        $this->handler = new TestHandler;
+        $logger = (new Logger('AuditTesting'))
+            ->pushHandler($this->handler)
+            ->pushProcessor(new PsrLogMessageProcessor);
 
         // Phase singleton out, so the message log is purged.
         Injector::inst()->unregisterNamedObject('AuditLogger');
-        Injector::inst()->registerService($this->writer, 'AuditLogger');
+        Injector::inst()->registerService($logger, 'AuditLogger');
     }
 
     public function testLoggingIn()
     {
         $this->logInWithPermission('ADMIN');
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('ADMIN@example.org', $message);
         $this->assertStringContainsString('successfully logged in', $message);
     }
@@ -48,7 +62,7 @@ class AuditHookTest extends FunctionalTest
         $member = Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
         $member->extend('memberAutoLoggedIn');
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('ADMIN@example.org', $message);
         $this->assertStringContainsString('successfully restored autologin', $message);
     }
@@ -60,7 +74,7 @@ class AuditHookTest extends FunctionalTest
         $member = Member::get()->filter(array('Email' => 'ADMIN@example.org'))->first();
         $this->logOut();
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('ADMIN@example.org', $message);
         $this->assertStringContainsString('successfully logged out', $message);
     }
@@ -72,8 +86,7 @@ class AuditHookTest extends FunctionalTest
         $group = new Group(array('Title' => 'My group'));
         $group->write();
 
-        $message = $this->writer->getLastMessage();
-        $this->assertEmpty($message, 'No one is logged in, so nothing was logged');
+        $this->assertEmpty($this->handler->getRecords(), 'No one is logged in, so nothing was logged');
     }
 
     public function testLoggingWriteWhenLoggedIn()
@@ -83,7 +96,7 @@ class AuditHookTest extends FunctionalTest
         $group = new Group(array('Title' => 'My group'));
         $group->write();
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('ADMIN@example.org', $message);
         $this->assertStringContainsString('modified', $message);
         $this->assertStringContainsString(Group::class, $message);
@@ -101,7 +114,7 @@ class AuditHookTest extends FunctionalTest
 
         $group->Members()->add($member);
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('ADMIN@example.org', $message);
         $this->assertStringContainsString('added Member "joe1"', $message);
         $this->assertStringContainsString('to Group "My group"', $message);
@@ -119,7 +132,7 @@ class AuditHookTest extends FunctionalTest
 
         $member->Groups()->add($group);
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('ADMIN@example.org', $message);
         $this->assertStringContainsString('added Member "joe2"', $message);
         $this->assertStringContainsString('to Group "My group"', $message);
@@ -138,7 +151,7 @@ class AuditHookTest extends FunctionalTest
         $group->Members()->add($member);
         $group->Members()->remove($member);
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('ADMIN@example.org', $message);
         $this->assertStringContainsString('removed Member "joe3"', $message);
         $this->assertStringContainsString('from Group "My group"', $message);
@@ -157,7 +170,7 @@ class AuditHookTest extends FunctionalTest
         $member->Groups()->add($group);
         $member->Groups()->remove($group);
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('ADMIN@example.org', $message);
         $this->assertStringContainsString('removed Member "joe4"', $message);
         $this->assertStringContainsString('from Group "My group"', $message);
@@ -174,7 +187,7 @@ class AuditHookTest extends FunctionalTest
         $permissionRole->Codes()->add($roleCode);
         $permissionRole->write();
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('Effective code', $message);
         $this->assertStringContainsString('grand_ruler', $message);
     }
@@ -197,7 +210,7 @@ class AuditHookTest extends FunctionalTest
         $page->write();
         $page->publishSingle();
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('Effective ViewerGroups', $message);
         $this->assertStringContainsString('OnlyTheseUsers', $message);
     }
@@ -216,7 +229,7 @@ class AuditHookTest extends FunctionalTest
         $page->write();
         $page->publishSingle();
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('ADMIN@example.org', $message);
         $this->assertStringContainsString('published Page', $message);
         $this->assertStringContainsString('My page', $message);
@@ -237,7 +250,7 @@ class AuditHookTest extends FunctionalTest
         $page->publishSingle();
         $page->doUnpublish();
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('ADMIN@example.org', $message);
         $this->assertStringContainsString('unpublished Page', $message);
         $this->assertStringContainsString('My page', $message);
@@ -257,7 +270,7 @@ class AuditHookTest extends FunctionalTest
         $page->write();
         $page->duplicate();
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('ADMIN@example.org', $message);
         $this->assertStringContainsString('duplicated Page', $message);
         $this->assertStringContainsString('My page', $message);
@@ -281,7 +294,7 @@ class AuditHookTest extends FunctionalTest
         $page->write();
         $page->doRevertToLive();
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('ADMIN@example.org', $message);
         $this->assertStringContainsString('reverted Page', $message);
         $this->assertStringContainsString('My page', $message);
@@ -303,7 +316,7 @@ class AuditHookTest extends FunctionalTest
 
         $page->delete();
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('ADMIN@example.org', $message);
         $this->assertStringContainsString('deleted Page', $message);
         $this->assertStringContainsString('My page', $message);
@@ -328,7 +341,7 @@ class AuditHookTest extends FunctionalTest
         $page->publishSingle();
         $page->delete();
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('ADMIN@example.org', $message);
         $this->assertStringContainsString('deleted Page', $message);
         $this->assertStringContainsString('My page', $message);

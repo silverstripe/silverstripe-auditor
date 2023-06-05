@@ -41,6 +41,8 @@ public function dostuff()
     $this->auditLogger->info('stuff happened');
     // You can also pass an arbitrary context array which will be included in the log.
     $this->auditLogger->warn('stuff happened', ['defcon' => 'amber']);
+    // By default we use the PsrLogMessageProcessor so you can created contextualised messages using the {key} syntax.
+    $this->auditLogger->info('stuff happened {defcon}', ['defcon' => 'amber']);
 }
 ```
 
@@ -49,6 +51,7 @@ Here is what will appear in the audit log on your dev machine (the exact format 
 ```
 Aug 24 11:09:02 SilverStripe_audit[80615]: stuff happened [] {"real_ip":"127.0.0.1","url":"/do-stuff/","http_method":"GET","server":"localhost","referrer":null}
 Aug 24 11:09:02 SilverStripe_audit[80615]: stuff happened {"defcon":"amber"} {"real_ip":"127.0.0.1","url":"/do-stuff/","http_method":"GET","server":"localhost","referrer":null}
+Aug 24 11:09:02 SilverStripe_audit[80615]: stuff happened amber {"defcon":"amber"} {"real_ip":"127.0.0.1","url":"/do-stuff/","http_method":"GET","server":"localhost","referrer":null}
 ```
 
 ## Troubleshooting

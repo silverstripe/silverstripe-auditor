@@ -2,6 +2,7 @@
 
 namespace SilverStripe\Auditor;
 
+use Psr\Log\LoggerInterface;
 use SilverStripe\Control\Email\Email;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DataExtension;
@@ -19,6 +20,9 @@ use SilverStripe\Security\Security;
  */
 class AuditHook extends DataExtension
 {
+    /**
+     * @return LoggerInterface
+     */
     protected function getAuditLogger()
     {
         // We cannot use the 'dependencies' private property, because this will prevent us
@@ -31,6 +35,7 @@ class AuditHook extends DataExtension
 
     public static function handle_manipulation($manipulation)
     {
+        /** @var LoggerInterface $auditLogger */
         $auditLogger = Injector::inst()->get('AuditLogger');
 
         $currentMember = Security::getCurrentUser();
@@ -61,6 +66,7 @@ class AuditHook extends DataExtension
             ) {
                 $className = $schema->tableClass($table);
 
+                /** @var DataObject $data */
                 $data = $className::get()->byID($details['id']);
                 if (!$data) {
                     continue;
@@ -69,12 +75,14 @@ class AuditHook extends DataExtension
 
                 $extendedText = '';
                 if ($table === $schema->tableName(Group::class)) {
+                    /** @var Group $data */
                     $extendedText = sprintf(
                         'Effective permissions: %s',
                         implode(', ', $data->Permissions()->column('Code'))
                     );
                 }
                 if ($table === $schema->tableName(PermissionRole::class)) {
+                    /** @var PermissionRole $data */
                     $extendedText = sprintf(
                         'Effective groups: %s, Effective permissions: %s',
                         implode(', ', $data->Groups()->column('Title')),
@@ -82,28 +90,40 @@ class AuditHook extends DataExtension
                     );
                 }
                 if ($table === $schema->tableName(PermissionRoleCode::class)) {
+                    /** @var PermissionRoleCode $data */
                     $extendedText = sprintf(
                         'Effective code: %s',
                         $data->Code
                     );
                 }
                 if ($table === $schema->tableName(Member::class)) {
+                    /** @var Member $data */
                     $extendedText = sprintf(
                         'Effective groups: %s',
                         implode(', ', $data->Groups()->column('Title'))
                     );
                 }
 
-                $auditLogger->info(sprintf(
-                    '"%s" (ID: %s) %s (ID: %s, ClassName: %s, Title: "%s", %s)',
-                    $currentMember->Email ?: $currentMember->Title,
-                    $currentMember->ID,
-                    $actionText,
-                    $details['id'],
-                    $data->ClassName,
-                    $data->Title,
-                    $extendedText
-                ));
+                $crud = AuditedEventType::CREATE;
+                if ($details['command'] === 'update') {
+                    $crud = AuditedEventType::UPDATE;
+                } elseif ($details['command'] === 'insert') {
+                    $crud = AuditedEventType::CREATE;
+                }
+
+                $auditLogger->info(
+                    '"{actor_email_or_title}" (ID: {actor_id}) {action} (ID: {object_id}, ClassName: {object_class}, Title: "{object_title}", {extended_text})',
+                    [
+                        'actor_email_or_title' => $currentMember->Email ?: $currentMember->Title,
+                        'actor_id' => $currentMember->ID,
+                        'action' => $actionText,
+                        'object_id' => $details['id'],
+                        'object_class' => $data->getClassName(),
+                        'object_title' => $data->Title,
+                        'extended_text' => $extendedText,
+                        'type' => $crud,
+                    ]
+                );
             }
 
             // log PermissionRole being added to a Group
@@ -117,15 +137,18 @@ class AuditHook extends DataExtension
                     $details['fields']['GroupID'],
                     $details['fields']['PermissionRoleID']
                 ))->value()) {
-                    $auditLogger->info(sprintf(
-                        '"%s" (ID: %s) added PermissionRole "%s" (ID: %s) to Group "%s" (ID: %s)',
-                        $currentMember->Email ?: $currentMember->Title,
-                        $currentMember->ID,
-                        $role->Title,
-                        $role->ID,
-                        $group->Title,
-                        $group->ID
-                    ));
+                    $auditLogger->info(
+                        '"{actor_email_or_title}" (ID: {actor_id}) added PermissionRole "{permission_role_title}" (ID: {permission_role_id}) to Group "{group_title}" (ID: {group_id})',
+                        [
+                            'actor_email_or_title' => $currentMember->Email ?: $currentMember->Title,
+                            'actor_id' => $currentMember->ID,
+                            'permission_role_title' => $role->Title,
+                            'permission_role_id' => $role->ID,
+                            'group_title' => $group->Title,
+                            'group_id' => $group->ID,
+                            'type' => AuditedEventType::UPDATE,
+                        ]
+                    );
                 }
             }
 
@@ -140,15 +163,18 @@ class AuditHook extends DataExtension
                     $details['fields']['GroupID'],
                     $details['fields']['MemberID']
                 ))->value()) {
-                    $auditLogger->info(sprintf(
-                        '"%s" (ID: %s) added Member "%s" (ID: %s) to Group "%s" (ID: %s)',
-                        $currentMember->Email ?: $currentMember->Title,
-                        $currentMember->ID,
-                        $member->Email ?: $member->Title,
-                        $member->ID,
-                        $group->Title,
-                        $group->ID
-                    ));
+                    $auditLogger->info(
+                        '"{actor_email_or_title}" (ID: {actor_id}) added Member "{member_email_or_title}" (ID: {member_id}) to Group "{group_title}" (ID: {group_id})',
+                        [
+                            'actor_email_or_title' => $currentMember->Email ?: $currentMember->Title,
+                            'actor_id' => $currentMember->ID,
+                            'member_email_or_title' => $member->Email ?: $member->Title,
+                            'member_id' => $member->ID,
+                            'group_title' => $group->Title,
+                            'group_id' => $group->ID,
+                            'type' => AuditedEventType::UPDATE,
+                        ]
+                    );
                 }
             }
         }
@@ -164,37 +190,40 @@ class AuditHook extends DataExtension
             return false;
         }
 
-        $effectiveViewerGroups = '';
+        $context = [
+            'actor_email_or_title' => $member->Email ?: $member->Title,
+            'actor_id' => $member->ID,
+            'object_singular_name' => $this->owner->singular_name(),
+            'object_title' => $this->owner->Title,
+            'object_id' => $this->owner->ID,
+            'object_version' => $this->owner->Version,
+            'object_class' => $this->owner->getClassName(),
+            'effective_viewer_groups' => '',
+            'effective_editor_groups' => '',
+            'type' => AuditedEventType::CREATE,
+        ];
+
         if ($this->owner->CanViewType === 'OnlyTheseUsers') {
             $originalViewerGroups = $original ? $original->ViewerGroups()->column('Title') : [];
-            $effectiveViewerGroups = implode(', ', $originalViewerGroups);
+            $context['effective_viewer_groups'] = implode(', ', $originalViewerGroups);
         }
-        if (!$effectiveViewerGroups) {
-            $effectiveViewerGroups = $this->owner->CanViewType;
+        if (!$context['effective_viewer_groups']) {
+            $context['effective_viewer_groups'] = $this->owner->CanViewType;
         }
 
-        $effectiveEditorGroups = '';
         if ($this->owner->CanEditType === 'OnlyTheseUsers') {
             $originalEditorGroups =  $original ? $original->EditorGroups()->column('Title') : [];
-            $effectiveEditorGroups = implode(', ', $originalEditorGroups);
+            $context['effective_editor_groups'] = implode(', ', $originalEditorGroups);
         }
-        if (!$effectiveEditorGroups) {
-            $effectiveEditorGroups = $this->owner->CanEditType;
+        if (!$context['effective_editor_groups']) {
+            $context['effective_editor_groups'] = $this->owner->CanEditType;
         }
 
-        $this->getAuditLogger()->info(sprintf(
-            '"%s" (ID: %s) published %s "%s" (ID: %s, Version: %s, ClassName: %s, Effective ViewerGroups: %s, '
-            . 'Effective EditorGroups: %s)',
-            $member->Email ?: $member->Title,
-            $member->ID,
-            $this->owner->singular_name(),
-            $this->owner->Title,
-            $this->owner->ID,
-            $this->owner->Version,
-            $this->owner->ClassName,
-            $effectiveViewerGroups,
-            $effectiveEditorGroups
-        ));
+        $this->getAuditLogger()->info(
+            '"{actor_email_or_title}" (ID: {actor_id}) published {object_singular_name} "{object_title}" (ID: {object_id}, Version: {object_version}, ClassName: {object_class}, Effective ViewerGroups: {effective_viewer_groups}, '
+                . 'Effective EditorGroups: {effective_editor_groups})',
+            $context
+        );
     }
 
     /**
@@ -207,14 +236,19 @@ class AuditHook extends DataExtension
             return false;
         }
 
-        $this->getAuditLogger()->info(sprintf(
-            '"%s" (ID: %s) unpublished %s "%s" (ID: %s)',
-            $member->Email ?: $member->Title,
-            $member->ID,
-            $this->owner->singular_name(),
-            $this->owner->Title,
-            $this->owner->ID
-        ));
+        $context = [
+            'actor_email_or_title' => $member->Email ?: $member->Title,
+            'actor_id' => $member->ID,
+            'object_singular_name' => $this->owner->singular_name(),
+            'object_title' => $this->owner->Title,
+            'object_id' => $this->owner->ID,
+            'type' => AuditedEventType::DELETE
+        ];
+
+        $this->getAuditLogger()->info(
+            '"{actor_email_or_title}" (ID: {actor_id}) unpublished {object_singular_name} "{object_title}" (ID: {object_id})',
+            $context,
+        );
     }
 
     /**
@@ -227,15 +261,20 @@ class AuditHook extends DataExtension
             return false;
         }
 
-        $this->getAuditLogger()->info(sprintf(
-            '"%s" (ID: %s) reverted %s "%s" (ID: %s) to it\'s live version (#%d)',
-            $member->Email ?: $member->Title,
-            $member->ID,
-            $this->owner->singular_name(),
-            $this->owner->Title,
-            $this->owner->ID,
-            $this->owner->Version
-        ));
+        $context = [
+            'actor_email_or_title' => $member->Email ?: $member->Title,
+            'actor_id' => $member->ID,
+            'object_singular_name' => $this->owner->singular_name(),
+            'object_title' => $this->owner->Title,
+            'object_id' => $this->owner->ID,
+            'object_version' => $this->owner->Version,
+            'type' => AuditedEventType::UPDATE,
+        ];
+
+        $this->getAuditLogger()->info(
+            '"{actor_email_or_title}" (ID: {actor_id}) reverted {object_singular_name} "{object_title}" (ID: {object_id}) to it\'s live version (#{object_version})',
+            $context,
+        );
     }
 
     /**
@@ -248,14 +287,19 @@ class AuditHook extends DataExtension
             return false;
         }
 
-        $this->getAuditLogger()->info(sprintf(
-            '"%s" (ID: %s) duplicated %s "%s" (ID: %s)',
-            $member->Email ?: $member->Title,
-            $member->ID,
-            $this->owner->singular_name(),
-            $this->owner->Title,
-            $this->owner->ID
-        ));
+        $context = [
+            'actor_email_or_title' => $member->Email ?: $member->Title,
+            'actor_id' => $member->ID,
+            'object_singular_name' => $this->owner->singular_name(),
+            'object_title' => $this->owner->Title,
+            'object_id' => $this->owner->ID,
+            'type' => AuditedEventType::CREATE
+        ];
+
+        $this->getAuditLogger()->info(
+            '"{actor_email_or_title}" (ID: {actor_id}) duplicated {object_singular_name} "{object_title}" (ID: {object_id})',
+            $context,
+        );
     }
 
     /**
@@ -268,14 +312,19 @@ class AuditHook extends DataExtension
             return false;
         }
 
-        $this->getAuditLogger()->info(sprintf(
-            '"%s" (ID: %s) deleted %s "%s" (ID: %s)',
-            $member->Email ?: $member->Title,
-            $member->ID,
-            $this->owner->singular_name(),
-            $this->owner->Title,
-            $this->owner->ID
-        ));
+        $context = [
+            'actor_email_or_title' => $member->Email ?: $member->Title,
+            'actor_id' => $member->ID,
+            'object_singular_name' => $this->owner->singular_name(),
+            'object_title' => $this->owner->Title,
+            'object_id' => $this->owner->ID,
+            'type' => AuditedEventType::DELETE,
+        ];
+
+        $this->getAuditLogger()->info(
+            '"{actor_email_or_title}" (ID: {actor_id}) deleted {object_singular_name} "{object_title}" (ID: {object_id})',
+            $context,
+        );
     }
 
     /**
@@ -288,14 +337,19 @@ class AuditHook extends DataExtension
             return false;
         }
 
-        $this->getAuditLogger()->info(sprintf(
-            '"%s" (ID: %s) restored %s "%s" to stage (ID: %s)',
-            $member->Email ?: $member->Title,
-            $member->ID,
-            $this->owner->singular_name(),
-            $this->owner->Title,
-            $this->owner->ID
-        ));
+        $context = [
+            'actor_email_or_title' => $member->Email ?: $member->Title,
+            'actor_id' => $member->ID,
+            'object_singular_name' => $this->owner->singular_name(),
+            'object_title' => $this->owner->Title,
+            'object_id' => $this->owner->ID,
+            'type' => AuditedEventType::CREATE,
+        ];
+
+        $this->getAuditLogger()->info(
+            '"{actor_email_or_title}" (ID: {actor_id}) restored {object_singular_name} "{object_title}" to stage (ID: {object_id})',
+            $context,
+        );
     }
 
     /**
@@ -303,11 +357,16 @@ class AuditHook extends DataExtension
      */
     public function afterMemberLoggedIn()
     {
-        $this->getAuditLogger()->info(sprintf(
-            '"%s" (ID: %s) successfully logged in',
-            $this->owner->Email ?: $this->owner->Title,
-            $this->owner->ID
-        ));
+        $context = [
+            'actor_email_or_title' => $this->owner->Email ?: $this->owner->Title,
+            'actor_id' => $this->owner->ID,
+            'type' => AuditedEventType::NOTICE,
+        ];
+
+        $this->getAuditLogger()->info(
+            '"{actor_email_or_title}" (ID: {actor_id}) successfully logged in',
+            $context,
+        );
     }
 
     /**
@@ -315,11 +374,16 @@ class AuditHook extends DataExtension
      */
     public function memberAutoLoggedIn()
     {
-        $this->getAuditLogger()->info(sprintf(
-            '"%s" (ID: %s) successfully restored autologin session',
-            $this->owner->Email ?: $this->owner->Title,
-            $this->owner->ID
-        ));
+        $context = [
+            'actor_email_or_title' => $this->owner->Email ?: $this->owner->Title,
+            'actor_id' => $this->owner->ID,
+            'type' => AuditedEventType::NOTICE,
+        ];
+
+        $this->getAuditLogger()->info(
+            '"{actor_email_or_title}" (ID: {actor_id}) successfully restored autologin session',
+            $context,
+        );
     }
 
     /**
@@ -327,6 +391,10 @@ class AuditHook extends DataExtension
      */
     public function authenticationFailed($data)
     {
+        $context = [
+            'type' => AuditedEventType::NOTICE,
+        ];
+
         // LDAP authentication uses a "Login" POST field instead of Email.
         $login = isset($data['Login'])
             ? $data['Login']
@@ -334,12 +402,14 @@ class AuditHook extends DataExtension
 
         if (empty($login)) {
             return $this->getAuditLogger()->warning(
-                'Could not determine username/email of failed authentication. '.
-                'This could be due to login form not using Email or Login field for POST data.'
+                'Could not determine username/email of failed authentication. ' .
+                    'This could be due to login form not using Email or Login field for POST data.'
             );
         }
 
-        $this->getAuditLogger()->info(sprintf('Failed login attempt using email "%s"', $login));
+        $context['email'] = $login;
+
+        $this->getAuditLogger()->info('Failed login attempt using email "{email}"', $context);
     }
 
     /**
@@ -365,13 +435,18 @@ class AuditHook extends DataExtension
 
     protected function logPermissionDenied($statusCode, $member)
     {
-        $this->getAuditLogger()->info(sprintf(
-            'HTTP code %s - "%s" (ID: %s) is denied access to %s',
-            $statusCode,
-            $member->Email ?: $member->Title,
-            $member->ID,
-            $_SERVER['REQUEST_URI']
-        ));
+        $context = [
+            'status_code' => $statusCode,
+            'actor_email_or_title' => $member->Email ?: $member->Title,
+            'actor_id' => $member->ID,
+            'request_uri' => $_SERVER['REQUEST_URI'],
+            'type' => AuditedEventType::NOTICE,
+        ];
+
+        $this->getAuditLogger()->info(
+            'HTTP code {status_code} - "{actor_email_or_title}" (ID: {actor_id}) is denied access to {request_uri}',
+            $context,
+        );
     }
 
     /**
@@ -379,10 +454,15 @@ class AuditHook extends DataExtension
      */
     public function afterMemberLoggedOut()
     {
-        $this->getAuditLogger()->info(sprintf(
-            '"%s" (ID: %s) successfully logged out',
-            $this->owner->Email ?: $this->owner->Title,
-            $this->owner->ID
-        ));
+        $context = [
+            'actor_email_or_title' => $this->owner->Email ?: $this->owner->Title,
+            'actor_id' => $this->owner->ID,
+            'type' => AuditedEventType::NOTICE,
+        ];
+
+        $this->getAuditLogger()->info(
+            '"{actor_email_or_title}" (ID: {actor_id}) successfully logged out',
+            $context,
+        );
     }
 }

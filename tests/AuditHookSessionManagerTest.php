@@ -2,7 +2,9 @@
 
 namespace SilverStripe\Auditor\Tests;
 
-use SilverStripe\Auditor\Tests\AuditHookTest\Logger;
+use Monolog\Logger;
+use Monolog\Handler\TestHandler;
+use Monolog\Processor\PsrLogMessageProcessor;
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Core\Injector\Injector;
@@ -10,17 +12,25 @@ use SilverStripe\Dev\SapphireTest;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Security;
 use SilverStripe\Security\SecurityToken;
-use SilverStripe\SessionManager\Control\LoginSessionController;
-use SilverStripe\SessionManager\Model\LoginSession;
+use SilverStripe\SessionManager\Controllers\LoginSessionController;
+use SilverStripe\SessionManager\Models\LoginSession;
 
 class AuditHookSessionManagerTest extends SapphireTest
 {
     protected $usesDatabase = true;
 
     /**
-     * @var Logger
+     * @var TestHandler
      */
-    protected $writer = null;
+    protected $handler = null;
+
+    private function lastMessage(): string
+    {
+        $records = $this->handler->getRecords();
+        /** @var LogRecord $lastRecord */
+        $lastRecord = end($records);
+        return $lastRecord->message;
+    }
 
     protected function setUp(): void
     {
@@ -29,9 +39,14 @@ class AuditHookSessionManagerTest extends SapphireTest
             $this->markTestSkipped('This test requires the silverstripe/session-manager module to be installed');
             return;
         }
-        $this->writer = new Logger;
+
+        $this->handler = new TestHandler;
+        $logger = (new Logger('AuditTesting'))
+            ->pushHandler($this->handler)
+            ->pushProcessor(new PsrLogMessageProcessor);
+
         Injector::inst()->unregisterNamedObject('AuditLogger');
-        Injector::inst()->registerService($this->writer, 'AuditLogger');
+        Injector::inst()->registerService($logger, 'AuditLogger');
     }
 
     public function testOnBeforeRemoveLoginSession()
@@ -49,7 +64,9 @@ class AuditHookSessionManagerTest extends SapphireTest
         $mockRequest = new HTTPRequest('DELETE', '');
         $mockRequest->setRouteParams(['ID' => $loginSession->ID]);
         $controller = new LoginSessionController();
-        $controller->removeLoginSession($mockRequest);
+        $controller->remove($mockRequest);
+
+        $lastMessage = $this->lastMessage();
 
         $message = sprintf(
             'Login session (ID: %s) for Member "%s" (ID: %s) is being removed by Member "%s" (ID: %s)',
@@ -59,6 +76,6 @@ class AuditHookSessionManagerTest extends SapphireTest
             $currentUser->Email,
             $currentUser->ID
         );
-        $this->assertContains($message, $this->writer->getLastMessage());
+        $this->assertStringContainsString($message, $lastMessage);
     }
 }

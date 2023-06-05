@@ -21,13 +21,16 @@ class AuditHookMFA extends DataExtension
      */
     public function onMethodVerificationSuccess(Member $member, $method)
     {
+        $context = [
+            'actor_email_or_title' => $member->Email ?: $member->Title,
+            'actor_id' => $member->ID,
+            'method' => get_class($method),
+            'type' => AuditedEventType::NOTICE,
+        ];
+
         $this->getAuditLogger()->info(
-            sprintf(
-                '"%s" (ID: %s) successfully verified using MFA method',
-                $member->Email ?: $member->Title,
-                $member->ID
-            ),
-            ['method' => get_class($method)]
+            '"{actor_email_or_title}" (ID: {actor_id}) successfully verified using MFA method',
+            $context,
         );
     }
 
@@ -40,19 +43,22 @@ class AuditHookMFA extends DataExtension
     public function onMethodVerificationFailure(Member $member, $method)
     {
         $context = [
+            'actor_email_or_title' => $member->Email ?: $member->Title,
+            'actor_id' => $member->ID,
             'method' => get_class($method),
+            'type' => AuditedEventType::NOTICE,
         ];
+
         if ($lockOutAfterCount = $member->config()->get('lock_out_after_incorrect_logins')) {
             // Add information about how many attempts have been made
             $context['attempts'] = $member->FailedLoginCount;
             $context['attempt_limit'] = $lockOutAfterCount;
         }
 
-        $this->getAuditLogger()->info(sprintf(
-            '"%s" (ID: %s) failed to verify using MFA method',
-            $member->Email ?: $member->Title,
-            $member->ID
-        ), $context);
+        $this->getAuditLogger()->info(
+            '"{actor_email_or_title}" (ID: {actor_id}) failed to verify using MFA method',
+            $context,
+        );
     }
 
     /**
@@ -62,11 +68,16 @@ class AuditHookMFA extends DataExtension
      */
     public function onSkipRegistration(Member $member)
     {
-        $this->getAuditLogger()->info(sprintf(
-            '"%s" (ID: %s) skipped MFA registration',
-            $member->Email ?: $member->Title,
-            $member->ID
-        ));
+        $context = [
+            'actor_email_or_title' => $member->Email ?: $member->Title,
+            'actor_id' => $member->ID,
+            'type' => AuditedEventType::NOTICE,
+        ];
+
+        $this->getAuditLogger()->info(
+            '"{actor_email_or_title}" (ID: {actor_id}) skipped MFA registration',
+            $context,
+        );
     }
 
     /**
@@ -76,14 +87,16 @@ class AuditHookMFA extends DataExtension
     public function onRegisterMethod(Member $member, $method)
     {
         $context = [
+            'actor_email_or_title' => $member->Email ?: $member->Title,
+            'actor_id' => $member->ID,
             'method' => get_class($method),
+            'type' => AuditedEventType::CREATE,
         ];
 
-        $this->getAuditLogger()->info(sprintf(
-            '"%s" (ID: %s) registered MFA method',
-            $member->Email ?: $member->Title,
-            $member->ID
-        ), $context);
+        $this->getAuditLogger()->info(
+            '"{actor_email_or_title}" (ID: {actor_id}) registered MFA method',
+            $context,
+        );
     }
 
     /**
@@ -95,14 +108,16 @@ class AuditHookMFA extends DataExtension
     public function onRegisterMethodFailure(Member $member, $method)
     {
         $context = [
+            'actor_email_or_title' => $member->Email ?: $member->Title,
+            'actor_id' => $member->ID,
             'method' => get_class($method),
+            'type' => AuditedEventType::NOTICE,
         ];
 
-        $this->getAuditLogger()->info(sprintf(
-            '"%s" (ID: %s) failed registering new MFA method',
-            $member->Email ?: $member->Title,
-            $member->ID
-        ), $context);
+        $this->getAuditLogger()->info(
+            '"{actor_email_or_title}" (ID: {actor_id}) failed registering new MFA method',
+            $context,
+        );
     }
 
     /**

@@ -24,8 +24,8 @@ class AuditHookManyManyList extends ManyManyList
                 return;
             }
 
-            $member = Member::get()->byId($itemID);
-            $group = Group::get()->byId($this->getForeignID());
+            $member = Member::get()->byId($this->getForeignID());
+            $group = Group::get()->byId($itemID);
 
             if (!$group) {
                 return;

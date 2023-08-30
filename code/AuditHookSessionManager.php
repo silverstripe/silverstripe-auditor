@@ -6,7 +6,7 @@ use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\Security\Security;
-use SilverStripe\SessionManager\Model\LoginSession;
+use SilverStripe\SessionManager\Models\LoginSession;
 
 /**
  * Provides logging actions on extension hooks from certain silverstripe/session-manager actions.
@@ -25,14 +25,20 @@ class AuditHookSessionManager extends DataExtension
         if (is_null($member) || $member->ID === 0 || is_null($currentUser) || $currentUser->ID === 0) {
             return;
         }
-        $this->getAuditLogger()->info(sprintf(
-            'Login session (ID: %s) for Member "%s" (ID: %s) is being removed by Member "%s" (ID: %s)',
-            $loginSession->ID,
-            $member->Email ?: $member->Title,
-            $member->ID,
-            $currentUser->Email ?: $currentUser->Title,
-            $currentUser->ID
-        ));
+
+        $context = [
+            'login_session_id' => $loginSession->ID,
+            'member_email_or_title' => $member->Email ?: $member->Title,
+            'member_id' => $member->ID,
+            'actor_email_or_title' => $currentUser->Email ?: $currentUser->Title,
+            'actor_id' => $currentUser->ID,
+            'crud' => AuditedEventType::DELETE,
+        ];
+
+        $this->getAuditLogger()->info(
+            'Login session (ID: {login_session_id}) for Member "{member_email_or_title}" (ID: {member_id}) is being removed by Member "{actor_email_or_title}" (ID: {actor_id})',
+            $context,
+        );
     }
 
     /**

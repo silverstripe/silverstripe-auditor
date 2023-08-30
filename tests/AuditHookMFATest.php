@@ -2,8 +2,12 @@
 
 namespace SilverStripe\Auditor\Tests;
 
+use Monolog\Logger;
+use Monolog\LogRecord;
+use Monolog\Processor\PsrLogMessageProcessor;
+use Monolog\Handler\TestHandler;
+use Monolog\Level;
 use PHPUnit\Framework\MockObject\MockObject;
-use SilverStripe\Auditor\Tests\AuditHookTest\Logger;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Control\Session;
 use SilverStripe\Core\Injector\Injector;
@@ -18,9 +22,9 @@ class AuditHookMFATest extends SapphireTest
     protected static $fixture_file = 'AuditHookMFATest.yml';
 
     /**
-     * @var Logger
+     * @var TestHandler
      */
-    protected $writer;
+    protected $testHandler;
 
     /**
      * @var LoginHandler
@@ -37,6 +41,18 @@ class AuditHookMFATest extends SapphireTest
      */
     protected $method;
 
+    private function lastRecord(): LogRecord|false
+    {
+        $records = $this->testHandler->getRecords();
+        return end($records);
+
+    }
+
+    private function lastMessage()
+    {
+        return $this->lastRecord()->message ?? '';
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -46,11 +62,14 @@ class AuditHookMFATest extends SapphireTest
             return;
         }
 
-        $this->writer = new Logger;
+        $this->testHandler = new TestHandler;
+        $logger = (new Logger('AuditTesting'))
+            ->pushHandler($this->testHandler)
+            ->pushProcessor(new PsrLogMessageProcessor);
 
         // Phase singleton out, so the message log is purged.
         Injector::inst()->unregisterNamedObject('AuditLogger');
-        Injector::inst()->registerService($this->writer, 'AuditLogger');
+        Injector::inst()->registerService($logger, 'AuditLogger');
 
         $this->handler = new LoginHandler('foo', $this->createMock(MemberAuthenticator::class));
         $this->handler->setRequest(new HTTPRequest('GET', '/'));
@@ -64,20 +83,26 @@ class AuditHookMFATest extends SapphireTest
     {
         $this->handler->extend('onRegisterMethod', $this->member, $this->method);
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('leslie@example.com', $message);
         $this->assertStringContainsString('registered MFA method', $message);
-        $this->assertStringContainsString('MethodInterface', $message, 'Method class name is in context');
+
+        $context = $this->lastRecord()->context;
+        $this->assertArrayHasKey('method', $context, 'Method class name is in context');
+        $this->assertStringContainsString('MethodInterface', $context['method'], 'Method class is correct');
     }
 
     public function testOnRegisterMethodFailure()
     {
         $this->handler->extend('onRegisterMethodFailure', $this->member, $this->method);
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('leslie@example.com', $message);
         $this->assertStringContainsString('failed registering new MFA method', $message);
-        $this->assertStringContainsString('MethodInterface', $message, 'Method class name is in context');
+
+        $context = $this->lastRecord()->context;
+        $this->assertArrayHasKey('method', $context, 'Method class name is in context');
+        $this->assertStringContainsString('MethodInterface', $context['method'], 'Method class is correct');
     }
 
     public function testOnMethodVerificationFailure()
@@ -85,10 +110,14 @@ class AuditHookMFATest extends SapphireTest
         $this->member->config()->set('lock_out_after_incorrect_logins', 0);
         $this->handler->extend('onMethodVerificationFailure', $this->member, $this->method);
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('leslie@example.com', $message);
         $this->assertStringContainsString('failed to verify using MFA method', $message);
-        $this->assertStringContainsString('MethodInterface', $message, 'Method class name is in context');
+
+        $context = $this->lastRecord()->context;
+        $this->assertArrayHasKey('method', $context, 'Method class name is in context');
+        $this->assertStringContainsString('MethodInterface', $context['method'], 'Method class is correct');
+
         $this->assertStringNotContainsString('attempt_limit', $message);
     }
 
@@ -100,20 +129,25 @@ class AuditHookMFATest extends SapphireTest
         $this->member->registerFailedLogin();
         $this->handler->extend('onMethodVerificationFailure', $this->member, $this->method);
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('leslie@example.com', $message);
         $this->assertStringContainsString('failed to verify using MFA method', $message);
-        $this->assertStringContainsString('MethodInterface', $message, 'Method class name is in context');
-        // NB: json format is defined by AuditHookTest\Logger::log()
-        $this->assertStringContainsString('"attempts":3', $message);
-        $this->assertStringContainsString('"attempt_limit":5', $message);
+
+        $context = $this->lastRecord()->context;
+        $this->assertArrayHasKey('method', $context, 'Method class name is in context');
+        $this->assertStringContainsString('MethodInterface', $context['method'], 'Method class is correct');
+
+        $this->assertArrayHasKey('attempts', $context, 'Attempts is in context');
+        $this->assertEquals(3, $context['attempts'], 'Correct number of attempts are logged');
+        $this->assertArrayHasKey('attempt_limit', $context, 'Attempt limit is in context');
+        $this->assertEquals(5, $context['attempt_limit'], 'Correct attempt limit is logged');
     }
 
     public function testOnSkipRegistration()
     {
         $this->handler->extend('onSkipRegistration', $this->member, $this->method);
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('leslie@example.com', $message);
         $this->assertStringContainsString('skipped MFA registration', $message);
     }
@@ -122,9 +156,12 @@ class AuditHookMFATest extends SapphireTest
     {
         $this->handler->extend('onMethodVerificationSuccess', $this->member, $this->method);
 
-        $message = $this->writer->getLastMessage();
+        $message = $this->lastMessage();
         $this->assertStringContainsString('leslie@example.com', $message);
         $this->assertStringContainsString('successfully verified using MFA method', $message);
-        $this->assertStringContainsString('MethodInterface', $message, 'Method class name is in context');
+
+        $context = $this->lastRecord()->context;
+        $this->assertArrayHasKey('method', $context, 'Method class name is in context');
+        $this->assertStringContainsString('MethodInterface', $context['method'], 'Method class is correct');
     }
 }

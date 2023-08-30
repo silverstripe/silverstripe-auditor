@@ -34,15 +34,20 @@ class AuditHookMemberGroupSet extends Member_GroupSet
                 return;
             }
 
-            $this->getAuditLogger()->info(sprintf(
-                '"%s" (ID: %s) removed Member "%s" (ID: %s) from Group "%s" (ID: %s)',
-                $currentMember->Email ?: $currentMember->Title,
-                $currentMember->ID,
-                $member->Email ?: $member->Title,
-                $member->ID,
-                $group->Title,
-                $group->ID
-            ));
+            $context = [
+                'actor_email_or_title' => $currentMember->Email ?: $currentMember->Title,
+                'actor_id' => $currentMember->ID,
+                'member_email_or_title' => $member->Email ?: $member->Title,
+                'member_id' => $member->ID,
+                'group_title' => $group->Title,
+                'group_id' => $group->ID,
+                'type' => AuditedEventType::UPDATE,
+            ];
+
+            $this->getAuditLogger()->info(
+                '"{actor_email_or_title}" (ID: {actor_id}) removed Member "{member_email_or_title}" (ID: {member_id}) from Group "{group_title}" (ID: {group_id})',
+                $context,
+            );
         }
     }
 

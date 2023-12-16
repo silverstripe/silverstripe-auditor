@@ -6,7 +6,7 @@ use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\Security\Security;
-use SilverStripe\SessionManager\Model\LoginSession;
+use SilverStripe\SessionManager\Models\LoginSession;
 
 /**
  * Provides logging actions on extension hooks from certain silverstripe/session-manager actions.

@@ -333,4 +333,31 @@ class AuditHookTest extends FunctionalTest
         $this->assertStringContainsString('deleted Page', $message);
         $this->assertStringContainsString('My page', $message);
     }
+
+    public function testFailedLogin()
+    {
+        $member = $this->createMemberWithPermission('ADMIN');
+        $this->get('Security/login');
+        $this->submitForm(
+            'MemberLoginForm_LoginForm',
+            null,
+            ['Email' => $member->Email, 'Password' => 'clearly wrong password']
+        );
+
+        $message = $this->writer->getLastMessage();
+        $this->assertStringContainsString('Failed login attempt using email "' . $member->Email . '"', $message);
+    }
+
+    public function testFailedLoginWithoutMember()
+    {
+        $this->get('Security/login');
+        $this->submitForm(
+            'MemberLoginForm_LoginForm',
+            null,
+            ['Email' => '__NO VALID USER__', 'Password' => 'clearly wrong password']
+        );
+
+        $message = $this->writer->getLastMessage();
+        $this->assertStringContainsString('Failed login attempt using email "__NO VALID USER__"', $message);
+    }
 }

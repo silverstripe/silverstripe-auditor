@@ -1,5 +1,17 @@
+SilverStripe\Security\Group:
+  # One test could have ambiguous results if the member and the group have the same ID.
+  # So we're creating a bunch of dummy groups to make sure the IDs are different.
+  noop:
+    Title: Noop
+  foobar:
+    Title: Foobar
+  prisoners:
+    Title: Prisoners
+    Code: prisoners
+
 SilverStripe\Security\Member:
   leslie_lawless:
     FirstName: Leslie
     Surname: Lawless
     Email: leslie@example.com
+    Groups: '=>SilverStripe\Security\Group.prisoners'

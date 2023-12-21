@@ -8,6 +8,10 @@ use SilverStripe\Security\Member;
 use SilverStripe\Security\Member_GroupSet;
 use SilverStripe\Security\Security;
 
+/**
+ * AuditHookMemberGroupSet is meant to override Member_GroupSet. When a Group
+ * is removed from a Member, it logs the event.
+ */
 class AuditHookMemberGroupSet extends Member_GroupSet
 {
     /**
@@ -18,7 +22,9 @@ class AuditHookMemberGroupSet extends Member_GroupSet
     {
         parent::removeByID($itemID);
 
-        if ($this->getJoinTable() === 'Group_Members') {
+        $memberGroupJoinTable = Member::singleton()->Groups()->getJoinTable();
+
+        if ($this->getJoinTable() === $memberGroupJoinTable) {
             $currentMember = Security::getCurrentUser();
             if (!$currentMember || !$currentMember->exists()) {
                 return;

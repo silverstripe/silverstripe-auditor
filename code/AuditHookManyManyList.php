@@ -8,6 +8,10 @@ use SilverStripe\Security\Group;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Security;
 
+/**
+ * AuditHookManyManyList is meant to override ManyManyList. When a Member is
+ * removed from a Group, it logs the event.
+ */
 class AuditHookManyManyList extends ManyManyList
 {
     /**
@@ -18,7 +22,9 @@ class AuditHookManyManyList extends ManyManyList
     {
         parent::removeByID($itemID);
 
-        if ($this->getJoinTable() == 'Group_Members') {
+        $memberGroupJoinTable = Member::singleton()->Groups()->getJoinTable();
+
+        if ($this->getJoinTable() === $memberGroupJoinTable) {
             $currentMember = Security::getCurrentUser();
             if (!($currentMember && $currentMember->exists())) {
                 return;

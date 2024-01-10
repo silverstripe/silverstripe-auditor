@@ -3,6 +3,7 @@
 namespace SilverStripe\Auditor;
 
 use SilverStripe\Core\Injector\Injector;
+use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\ManyManyList;
 use SilverStripe\Security\Group;
 use SilverStripe\Security\Member;
@@ -11,6 +12,9 @@ use SilverStripe\Security\Security;
 /**
  * AuditHookManyManyList is meant to override ManyManyList. When a Member is
  * removed from a Group, it logs the event.
+ *
+ * @template T of DataObject
+ * @extends ManyManyList<T>
  */
 class AuditHookManyManyList extends ManyManyList
 {

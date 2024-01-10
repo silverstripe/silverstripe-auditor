@@ -4,12 +4,16 @@ namespace SilverStripe\Auditor;
 
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
+use SilverStripe\MFA\Authenticator\LoginHandler;
 use SilverStripe\MFA\Method\MethodInterface;
+use SilverStripe\MFA\Service\RegisteredMethodManager;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\Security\Member;
 
 /**
  * Provides logging actions on extension hooks from certain silverstripe/mfa actions.
+ *
+ * @extends DataExtension<LoginHandler|RegisteredMethodManager>
  */
 class AuditHookMFA extends DataExtension
 {

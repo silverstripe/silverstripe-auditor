@@ -5,7 +5,11 @@ namespace SilverStripe\Auditor\Extensions;
 use SilverStripe\Auditor\AuditHook;
 use SilverStripe\Core\Extension;
 use TractorCow\ClassProxy\Generators\ProxyGenerator;
+use TractorCow\SilverStripeProxyDB\ProxyDBFactory;
 
+/**
+ * @extends Extension<ProxyDBFactory>
+ */
 class ProxyDBExtension extends Extension
 {
     /**

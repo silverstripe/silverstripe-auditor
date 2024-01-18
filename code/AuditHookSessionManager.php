@@ -6,10 +6,13 @@ use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\Security\Security;
+use SilverStripe\SessionManager\Controllers\LoginSessionController;
 use SilverStripe\SessionManager\Models\LoginSession;
 
 /**
  * Provides logging actions on extension hooks from certain silverstripe/session-manager actions.
+ *
+ * @extends DataExtension<LoginSessionController>
  */
 class AuditHookSessionManager extends DataExtension
 {

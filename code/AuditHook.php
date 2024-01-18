@@ -2,6 +2,8 @@
 
 namespace SilverStripe\Auditor;
 
+use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\Control\Controller;
 use SilverStripe\Control\Email\Email;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DataExtension;
@@ -16,6 +18,8 @@ use SilverStripe\Security\Security;
 
 /**
  * Provides logging hooks that are inserted into Framework objects.
+ *
+ * @extends DataExtension<Member|SiteTree|Controller>
  */
 class AuditHook extends DataExtension
 {
@@ -38,7 +42,6 @@ class AuditHook extends DataExtension
             return false;
         }
 
-        /** @var DataObjectSchema $schema */
         $schema = DataObject::getSchema();
 
         // The tables that we watch for manipulation on

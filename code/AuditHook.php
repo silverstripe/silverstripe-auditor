@@ -333,7 +333,7 @@ class AuditHook extends DataExtension
         // LDAP authentication uses a "Login" POST field instead of Email.
         $login = isset($data['Login'])
             ? $data['Login']
-            : (isset($data[Email::class]) ? $data[Email::class] : '');
+            : (isset($data['Email']) ? $data['Email'] : '');
 
         if (empty($login)) {
             return $this->getAuditLogger()->warning(
@@ -343,6 +343,14 @@ class AuditHook extends DataExtension
         }
 
         $this->getAuditLogger()->info(sprintf('Failed login attempt using email "%s"', $login));
+    }
+
+    /**
+     * Log failed login attempts when the email address doesn't map to an existing member record
+     */
+    public function authenticationFailedUnknownUser($data)
+    {
+        $this->authenticationFailed($data);
     }
 
     /**

@@ -11,10 +11,11 @@ jobs:
     uses: silverstripe/gha-ci/.github/workflows/ci.yml@v1
     with:
       extra_jobs: |
-        - composer_require_extra: silverstripe/mfa:^5
+        - composer_require_extra: silverstripe/mfa:^6
           name_suffix: 'mfa'
           phpunit: true
-        - composer_require_extra: silverstripe/session-manager:^2
+        - composer_require_extra: silverstripe/session-manager:^3
           name_suffix: 'session-manager'
           phpunit: true
-        - composer_require_extra: silverstripe/subsites:^3
+        - composer_require_extra: silverstripe/subsites:^4
+          name_suffix: 'subsites'

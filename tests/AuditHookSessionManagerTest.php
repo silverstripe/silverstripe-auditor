@@ -10,7 +10,7 @@ use SilverStripe\Dev\SapphireTest;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Security;
 use SilverStripe\Security\SecurityToken;
-use SilverStripe\SessionManager\Control\LoginSessionController;
+use SilverStripe\SessionManager\Controllers\LoginSessionController;
 use SilverStripe\SessionManager\Models\LoginSession;
 
 class AuditHookSessionManagerTest extends SapphireTest
@@ -38,27 +38,29 @@ class AuditHookSessionManagerTest extends SapphireTest
     {
         $this->logInWithPermission('ADMIN');
 
-        $currentUser = Security::getCurrentUser();
-
         $member = new Member(array('FirstName' => 'Joe', 'Email' => 'joe3'));
         $member->write();
         $request = Controller::curr()->getRequest();
         $loginSession = LoginSession::generate($member, false, $request);
 
+        // Only the current user is able to remove their login session, not even admin can do it
+        Security::setCurrentUser($member);
+
         SecurityToken::disable();
         $mockRequest = new HTTPRequest('DELETE', '');
         $mockRequest->setRouteParams(['ID' => $loginSession->ID]);
         $controller = new LoginSessionController();
-        $controller->removeLoginSession($mockRequest);
+        $controller->remove($mockRequest);
 
         $message = sprintf(
             'Login session (ID: %s) for Member "%s" (ID: %s) is being removed by Member "%s" (ID: %s)',
             $loginSession->ID,
             $member->Email,
             $member->ID,
-            $currentUser->Email,
-            $currentUser->ID
+            $member->Email,
+            $member->ID
         );
-        $this->assertContains($message, $this->writer->getLastMessage());
+
+        $this->assertStringContainsString($message, $this->writer->getLastMessage());
     }
 }

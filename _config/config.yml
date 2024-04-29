@@ -18,6 +18,10 @@ SilverStripe\Security\Member:
   extensions:
     - SilverStripe\Auditor\AuditHook
 
+SilverStripe\ORM\Connect\Database:
+  extensions:
+    - SilverStripe\Auditor\Extensions\DatabaseExtension
+
 ---
 Name: auditorcms
 Only:

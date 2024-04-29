@@ -1,6 +1,0 @@
----
-Name: auditordbproxy
----
-TractorCow\SilverStripeProxyDB\ProxyDBFactory:
-  extensions:
-    - SilverStripe\Auditor\Extensions\ProxyDBExtension

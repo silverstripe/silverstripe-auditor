@@ -6,12 +6,26 @@ use SilverStripe\Auditor\AuditHook;
 use SilverStripe\Core\Extension;
 use TractorCow\ClassProxy\Generators\ProxyGenerator;
 use TractorCow\SilverStripeProxyDB\ProxyDBFactory;
+use SilverStripe\Dev\Deprecation;
 
 /**
  * @extends Extension<ProxyDBFactory>
+ *
+ * @deprecated 3.2.0 Will be replaced with an extension on SilverStripe\ORM\Connect\Database
  */
 class ProxyDBExtension extends Extension
 {
+    public function __construct()
+    {
+        Deprecation::withNoReplacement(function () {
+            Deprecation::notice(
+                '3.2.0',
+                'Will be replaced with an extension on SilverStripe\ORM\Connect\Database.',
+                Deprecation::SCOPE_CLASS
+            );
+        });
+    }
+
     /**
      * Bind a proxy callback into the Database::manipulate method to allow us to track database activity
      * for the {@link AuditHook} class

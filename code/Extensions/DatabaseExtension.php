@@ -7,7 +7,7 @@ use SilverStripe\Auditor\AuditHook;
 
 class DatabaseExtension extends Extension
 {
-    public function onBeforeManipulate(array &$manipulation)
+    protected function onBeforeManipulate(array &$manipulation)
     {
         AuditHook::handle_manipulation($manipulation);
     }

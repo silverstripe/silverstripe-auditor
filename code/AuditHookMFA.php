@@ -23,7 +23,7 @@ class AuditHookMFA extends DataExtension
      * @param Member $member
      * @param MethodInterface $method
      */
-    public function onMethodVerificationSuccess(Member $member, $method)
+    protected function onMethodVerificationSuccess(Member $member, $method)
     {
         $this->getAuditLogger()->info(
             sprintf(
@@ -41,7 +41,7 @@ class AuditHookMFA extends DataExtension
      * @param Member $member
      * @param MethodInterface $method
      */
-    public function onMethodVerificationFailure(Member $member, $method)
+    protected function onMethodVerificationFailure(Member $member, $method)
     {
         $context = [
             'method' => get_class($method),
@@ -64,7 +64,7 @@ class AuditHookMFA extends DataExtension
      *
      * @param Member $member
      */
-    public function onSkipRegistration(Member $member)
+    protected function onSkipRegistration(Member $member)
     {
         $this->getAuditLogger()->info(sprintf(
             '"%s" (ID: %s) skipped MFA registration',
@@ -77,7 +77,7 @@ class AuditHookMFA extends DataExtension
      * @param Member $member
      * @param MethodInterface $method
      */
-    public function onRegisterMethod(Member $member, $method)
+    protected function onRegisterMethod(Member $member, $method)
     {
         $context = [
             'method' => get_class($method),
@@ -96,7 +96,7 @@ class AuditHookMFA extends DataExtension
      * @param Member $member
      * @param MethodInterface $method
      */
-    public function onRegisterMethodFailure(Member $member, $method)
+    protected function onRegisterMethodFailure(Member $member, $method)
     {
         $context = [
             'method' => get_class($method),

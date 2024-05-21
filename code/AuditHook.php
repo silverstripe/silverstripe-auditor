@@ -160,7 +160,7 @@ class AuditHook extends DataExtension
     /**
      * Log a record being published.
      */
-    public function onAfterPublish(&$original)
+    protected function onAfterPublish(&$original)
     {
         $member = Security::getCurrentUser();
         if (!$member || !$member->exists()) {
@@ -203,7 +203,7 @@ class AuditHook extends DataExtension
     /**
      * Log a record being unpublished.
      */
-    public function onAfterUnpublish()
+    protected function onAfterUnpublish()
     {
         $member = Security::getCurrentUser();
         if (!$member || !$member->exists()) {
@@ -223,7 +223,7 @@ class AuditHook extends DataExtension
     /**
      * Log a record being reverted to live.
      */
-    public function onAfterRevertToLive()
+    protected function onAfterRevertToLive()
     {
         $member = Security::getCurrentUser();
         if (!$member || !$member->exists()) {
@@ -244,7 +244,7 @@ class AuditHook extends DataExtension
     /**
      * Log a record being duplicated.
      */
-    public function onAfterDuplicate()
+    protected function onAfterDuplicate()
     {
         $member = Security::getCurrentUser();
         if (!$member || !$member->exists()) {
@@ -264,7 +264,7 @@ class AuditHook extends DataExtension
     /**
      * Log a record being deleted.
      */
-    public function onAfterDelete()
+    protected function onAfterDelete()
     {
         $member = Security::getCurrentUser();
         if (!$member || !$member->exists()) {
@@ -284,7 +284,7 @@ class AuditHook extends DataExtension
     /**
      * Log a record being restored to stage.
      */
-    public function onAfterRestoreToStage()
+    protected function onAfterRestoreToStage()
     {
         $member = Security::getCurrentUser();
         if (!$member || !$member->exists()) {
@@ -316,7 +316,7 @@ class AuditHook extends DataExtension
     /**
      * Log successfully restored sessions from "remember me" cookies ("auto login").
      */
-    public function memberAutoLoggedIn()
+    protected function memberAutoLoggedIn()
     {
         $this->getAuditLogger()->info(sprintf(
             '"%s" (ID: %s) successfully restored autologin session',
@@ -348,7 +348,7 @@ class AuditHook extends DataExtension
     /**
      * Log failed login attempts when the email address doesn't map to an existing member record
      */
-    public function authenticationFailedUnknownUser($data)
+    protected function authenticationFailedUnknownUser($data)
     {
         $this->authenticationFailed($data);
     }
@@ -356,7 +356,7 @@ class AuditHook extends DataExtension
     /**
      * Log permission failures (where the status is set after init of page).
      */
-    public function onAfterInit()
+    protected function onAfterInit()
     {
         // Suppress errors if dev/build necessary
         if (!Security::database_is_ready()) {

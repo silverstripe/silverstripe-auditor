@@ -21,7 +21,7 @@ class AuditHookSessionManager extends DataExtension
      *
      * @param LoginSession $loginSession
      */
-    public function onBeforeRemoveLoginSession(LoginSession $loginSession)
+    protected function onBeforeRemoveLoginSession(LoginSession $loginSession)
     {
         $member = $loginSession->Member();
         $currentUser = Security::getCurrentUser();

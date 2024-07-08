@@ -7,6 +7,7 @@ use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\SyslogHandler;
 use Monolog\Logger;
 use Monolog\Processor\WebProcessor;
+use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Factory;
 
 /**
@@ -15,7 +16,7 @@ use SilverStripe\Core\Injector\Factory;
  */
 class AuditFactory implements Factory
 {
-    public function create($service, array $params = [])
+    public function create(string $service, array $params = []): LoggerInterface
     {
         if (!empty($params)) {
             throw new Exception('AuditFactory does not support passing params.');

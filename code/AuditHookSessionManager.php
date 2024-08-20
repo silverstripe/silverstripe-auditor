@@ -4,17 +4,17 @@ namespace SilverStripe\Auditor;
 
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\ORM\DataExtension;
 use SilverStripe\Security\Security;
 use SilverStripe\SessionManager\Controllers\LoginSessionController;
 use SilverStripe\SessionManager\Models\LoginSession;
+use SilverStripe\Core\Extension;
 
 /**
  * Provides logging actions on extension hooks from certain silverstripe/session-manager actions.
  *
- * @extends DataExtension<LoginSessionController>
+ * @extends Extension<LoginSessionController>
  */
-class AuditHookSessionManager extends DataExtension
+class AuditHookSessionManager extends Extension
 {
     /**
      * Login session for a member is being removed

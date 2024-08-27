@@ -304,7 +304,7 @@ class AuditHook extends DataExtension
     /**
      * Log successful login attempts.
      */
-    public function afterMemberLoggedIn()
+    protected function onAfterMemberLoggedIn()
     {
         $this->getAuditLogger()->info(sprintf(
             '"%s" (ID: %s) successfully logged in',
@@ -328,7 +328,7 @@ class AuditHook extends DataExtension
     /**
      * Log failed login attempts.
      */
-    public function authenticationFailed($data)
+    protected function onAuthenticationFailed($data)
     {
         // LDAP authentication uses a "Login" POST field instead of Email.
         $login = isset($data['Login'])
@@ -348,9 +348,9 @@ class AuditHook extends DataExtension
     /**
      * Log failed login attempts when the email address doesn't map to an existing member record
      */
-    protected function authenticationFailedUnknownUser($data)
+    protected function onAuthenticationFailedUnknownUser($data)
     {
-        $this->authenticationFailed($data);
+        $this->onAuthenticationFailed($data);
     }
 
     /**
@@ -388,7 +388,7 @@ class AuditHook extends DataExtension
     /**
      * Log successful logout.
      */
-    public function afterMemberLoggedOut()
+    protected function onAfterMemberLoggedOut()
     {
         $this->getAuditLogger()->info(sprintf(
             '"%s" (ID: %s) successfully logged out',

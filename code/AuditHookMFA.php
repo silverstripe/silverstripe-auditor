@@ -7,15 +7,15 @@ use SilverStripe\Core\Injector\Injector;
 use SilverStripe\MFA\Authenticator\LoginHandler;
 use SilverStripe\MFA\Method\MethodInterface;
 use SilverStripe\MFA\Service\RegisteredMethodManager;
-use SilverStripe\ORM\DataExtension;
 use SilverStripe\Security\Member;
+use SilverStripe\Core\Extension;
 
 /**
  * Provides logging actions on extension hooks from certain silverstripe/mfa actions.
  *
- * @extends DataExtension<LoginHandler|RegisteredMethodManager>
+ * @extends Extension<LoginHandler|RegisteredMethodManager>
  */
-class AuditHookMFA extends DataExtension
+class AuditHookMFA extends Extension
 {
     /**
      * A successful login using an MFA method

@@ -6,7 +6,6 @@ use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\Email\Email;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DataObjectSchema;
 use SilverStripe\ORM\DB;
@@ -15,13 +14,14 @@ use SilverStripe\Security\Member;
 use SilverStripe\Security\PermissionRole;
 use SilverStripe\Security\PermissionRoleCode;
 use SilverStripe\Security\Security;
+use SilverStripe\Core\Extension;
 
 /**
  * Provides logging hooks that are inserted into Framework objects.
  *
- * @extends DataExtension<Member|SiteTree|Controller>
+ * @extends Extension<Member|SiteTree|Controller>
  */
-class AuditHook extends DataExtension
+class AuditHook extends Extension
 {
     protected function getAuditLogger()
     {

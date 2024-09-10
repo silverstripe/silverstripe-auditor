@@ -358,7 +358,7 @@ class AuditHook extends Extension
      */
     protected function onAfterInit()
     {
-        // Suppress errors if dev/build necessary
+        // Suppress errors if the database needs to be built
         if (!Security::database_is_ready()) {
             return false;
         }

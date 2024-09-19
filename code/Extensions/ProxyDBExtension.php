@@ -17,7 +17,7 @@ class ProxyDBExtension extends Extension
 {
     public function __construct()
     {
-        Deprecation::withNoReplacement(function () {
+        Deprecation::withSuppressedNotice(function () {
             Deprecation::notice(
                 '3.2.0',
                 'Will be replaced with an extension on SilverStripe\ORM\Connect\Database.',

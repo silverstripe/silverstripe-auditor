@@ -11,7 +11,7 @@ use SilverStripe\Dev\Deprecation;
 /**
  * @extends Extension<ProxyDBFactory>
  *
- * @deprecated 3.2.0 Will be replaced with an extension on SilverStripe\ORM\Connect\Database
+ * @deprecated 3.2.0 Will be replaced with an extension on SilverStripe\ORM\Connect\Database in a future major release
  */
 class ProxyDBExtension extends Extension
 {
@@ -20,7 +20,7 @@ class ProxyDBExtension extends Extension
         Deprecation::withSuppressedNotice(function () {
             Deprecation::notice(
                 '3.2.0',
-                'Will be replaced with an extension on SilverStripe\ORM\Connect\Database.',
+                'Will be replaced with an extension on SilverStripe\ORM\Connect\Database in a future major release.',
                 Deprecation::SCOPE_CLASS
             );
         });
